@@ -1,4 +1,5 @@
 
+
 import React, { forwardRef } from 'react';
 import { DeliveryNoteData } from '../types';
 
@@ -57,11 +58,11 @@ const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(({ data
             <table className="w-full border-collapse text-left">
                 <thead>
                     <tr className="bg-slate-100">
-                        <th className="border p-2 w-12 text-center">ลำดับ</th>
-                        <th className="border p-2">รายการ</th>
-                        <th className="border p-2 w-20 text-center">จำนวน</th>
-                        <th className="border p-2 w-24 text-center">หน่วย</th>
-                        <th className="border p-2 w-1/4">หมายเหตุ</th>
+                        <th className="border p-2 w-12 text-center font-semibold text-slate-600">ลำดับ</th>
+                        <th className="border p-2 font-semibold text-slate-600">รายการ</th>
+                        <th className="border p-2 w-20 text-center font-semibold text-slate-600">จำนวน</th>
+                        <th className="border p-2 w-24 text-center font-semibold text-slate-600">หน่วย</th>
+                        <th className="border p-2 w-1/4 font-semibold text-slate-600">หมายเหตุ</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -1,7 +1,5 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { PrimeReactProvider } from 'primereact/api';
 import App from './App';
 
 const rootElement = document.getElementById('root');
@@ -12,8 +10,6 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <PrimeReactProvider>
-      <App />
-    </PrimeReactProvider>
+    <App />
   </React.StrictMode>
 );

@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Work Delivery Note Generator</title>
+    <title>Document Generator</title>
     
     <!-- Google Font: IBM Plex Sans Thai -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,16 +14,31 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- PrimeReact -->
-    <link rel="stylesheet" href="https://unpkg.com/primereact/resources/themes/lara-light-indigo/theme.css" />
-    <link rel="stylesheet" href="https://unpkg.com/primereact/resources/primereact.min.css" />
-    <link rel="stylesheet" href="https://unpkg.com/primeicons/primeicons.css" />
-
     <style>
       body {
         font-family: 'IBM Plex Sans Thai', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        background-color: #f1f5f9; /* Slate 100 */
+      }
+
+      /* Custom scrollbar for preview */
+      #printable-area::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #printable-area::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+
+      #printable-area::-webkit-scrollbar-thumb {
+        background: #d1d5db; /* Slate 300 */
+        border-radius: 10px;
+      }
+
+      #printable-area::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af; /* Slate 400 */
       }
     </style>
   <script type="importmap">
