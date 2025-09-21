@@ -65,7 +65,7 @@ const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(({ data
                             <th className="p-2 font-semibold text-slate-600 w-1/4">หมายเหตุ</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="text-slate-700">
                         {data.items.map((item, index) => (
                             <tr key={index} className="border-b border-slate-100">
                                 <td className="p-2 text-center align-top">{index + 1}</td>
