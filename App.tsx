@@ -5,7 +5,10 @@ import DeliveryForm from './components/DeliveryForm';
 import DocumentPreview from './components/DocumentPreview';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyPreview from './components/WarrantyPreview';
+import HistoryList from './components/HistoryList';
 import { generatePdf } from './services/pdfGenerator';
+import { saveDeliveryNote, saveWarrantyCard } from './services/firestore';
+import type { DeliveryNoteDocument, WarrantyDocument } from './services/firestore';
 
 const initialDeliveryData: DeliveryNoteData = {
     logo: null,
@@ -40,13 +43,16 @@ const initialWarrantyData: WarrantyData = {
 };
 
 type DocType = 'delivery' | 'warranty';
+type ViewMode = 'form' | 'history';
 type Notification = { show: boolean; message: string; type: 'success' | 'info' | 'error' };
 
 const App: React.FC = () => {
     const [deliveryData, setDeliveryData] = useState<DeliveryNoteData>(initialDeliveryData);
     const [warrantyData, setWarrantyData] = useState<WarrantyData>(initialWarrantyData);
     const [activeTab, setActiveTab] = useState<DocType>('delivery');
+    const [viewMode, setViewMode] = useState<ViewMode>('form');
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isSaving, setIsSaving] = useState<boolean>(false);
     const [notification, setNotification] = useState<Notification>({ show: false, message: '', type: 'info' });
     const printableAreaRef = useRef<HTMLDivElement>(null);
     
@@ -63,6 +69,28 @@ const App: React.FC = () => {
         setNotification({ show: true, message, type });
     };
 
+    // ฟังก์ชันบันทึกข้อมูลลง Firestore
+    const handleSaveToFirestore = useCallback(async () => {
+        setIsSaving(true);
+        showToast('กำลังบันทึกข้อมูล...', 'info');
+
+        try {
+            if (activeTab === 'delivery') {
+                const id = await saveDeliveryNote(deliveryData);
+                showToast(`บันทึกใบส่งมอบงานสำเร็จ (ID: ${id})`, 'success');
+            } else {
+                const id = await saveWarrantyCard(warrantyData);
+                showToast(`บันทึกใบรับประกันสำเร็จ (ID: ${id})`, 'success');
+            }
+        } catch (error) {
+            console.error('Failed to save to Firestore:', error);
+            showToast('ไม่สามารถบันทึกข้อมูลได้', 'error');
+        } finally {
+            setIsSaving(false);
+        }
+    }, [activeTab, deliveryData, warrantyData]);
+
+    // ฟังก์ชัน Export PDF
     const handleExportPdf = useCallback(async () => {
         if (!printableAreaRef.current) return;
         
@@ -83,6 +111,27 @@ const App: React.FC = () => {
             setIsLoading(false);
         }
     }, [activeTab, deliveryData.docNumber, warrantyData.serialNumber]);
+
+    // ฟังก์ชันโหลดเอกสารจาก History
+    const handleLoadDocument = useCallback((doc: DeliveryNoteDocument | WarrantyDocument) => {
+        if ('project' in doc) {
+            // เป็น DeliveryNoteDocument
+            setDeliveryData({
+                ...doc,
+                date: doc.date || null,
+            });
+            setActiveTab('delivery');
+        } else {
+            // เป็น WarrantyDocument
+            setWarrantyData({
+                ...doc,
+                purchaseDate: doc.purchaseDate || null,
+            });
+            setActiveTab('warranty');
+        }
+        setViewMode('form');
+        showToast('โหลดเอกสารสำเร็จ', 'success');
+    }, []);
     
     const notificationColors = {
         info: 'bg-blue-500',
@@ -99,74 +148,129 @@ const App: React.FC = () => {
             )}
             <Header />
             <main className="p-4 md:p-8 max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
-                    
-                    {/* Form Section */}
-                    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg mb-8 lg:mb-0">
-                        <div className="border-b border-gray-200">
-                            <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                                <button
-                                    onClick={() => setActiveTab('delivery')}
-                                    className={`${activeTab === 'delivery' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
-                                >
-                                    ใบส่งมอบงาน
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('warranty')}
-                                    className={`${activeTab === 'warranty' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
-                                >
-                                    ใบรับประกันสินค้า
-                                </button>
-                            </nav>
-                        </div>
-                        
-                        {activeTab === 'delivery' ? (
-                            <DeliveryForm
-                                data={deliveryData}
-                                setData={setDeliveryData}
-                            />
-                        ) : (
-                            <WarrantyForm
-                                data={warrantyData}
-                                setData={setWarrantyData}
-                            />
-                        )}
-                    </div>
-                    
-                    {/* Preview Section */}
-                    <div>
-                        <div className="sticky top-8">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-semibold text-slate-700">ตัวอย่างเอกสาร</h2>
-                                <button
-                                    type="button"
-                                    onClick={handleExportPdf}
-                                    disabled={isLoading}
-                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed"
-                                >
-                                    {isLoading ? (
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                                        </svg>
-                                    )}
-                                    {isLoading ? 'กำลังสร้าง...' : 'ดาวน์โหลด PDF'}
-                                </button>
-                            </div>
-                            <div className="bg-white p-1 rounded-lg shadow-lg">
-                                {activeTab === 'delivery' ? (
-                                    <DocumentPreview ref={printableAreaRef} data={deliveryData} />
-                                ) : (
-                                    <WarrantyPreview ref={printableAreaRef} data={warrantyData} />
-                                )}
-                            </div>
-                        </div>
+                {/* View Mode Selector */}
+                <div className="mb-6 flex justify-center">
+                    <div className="inline-flex rounded-md shadow-sm" role="group">
+                        <button
+                            onClick={() => setViewMode('form')}
+                            className={`px-6 py-2 text-sm font-medium rounded-l-lg border ${
+                                viewMode === 'form'
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            📝 สร้างเอกสาร
+                        </button>
+                        <button
+                            onClick={() => setViewMode('history')}
+                            className={`px-6 py-2 text-sm font-medium rounded-r-lg border-t border-r border-b ${
+                                viewMode === 'history'
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            📋 ประวัติเอกสาร
+                        </button>
                     </div>
                 </div>
+
+                {viewMode === 'form' ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
+                        {/* Form Section */}
+                        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg mb-8 lg:mb-0">
+                            <div className="border-b border-gray-200">
+                                <nav className="-mb-px flex space-x-4" aria-label="Tabs">
+                                    <button
+                                        onClick={() => setActiveTab('delivery')}
+                                        className={`${activeTab === 'delivery' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                                    >
+                                        ใบส่งมอบงาน
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('warranty')}
+                                        className={`${activeTab === 'warranty' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                                    >
+                                        ใบรับประกันสินค้า
+                                    </button>
+                                </nav>
+                            </div>
+                            
+                            {activeTab === 'delivery' ? (
+                                <DeliveryForm
+                                    data={deliveryData}
+                                    setData={setDeliveryData}
+                                />
+                            ) : (
+                                <WarrantyForm
+                                    data={warrantyData}
+                                    setData={setWarrantyData}
+                                />
+                            )}
+                        </div>
+                        
+                        {/* Preview Section */}
+                        <div>
+                            <div className="sticky top-8">
+                                <div className="flex justify-between items-center mb-4 gap-2">
+                                    <h2 className="text-xl font-semibold text-slate-700">ตัวอย่างเอกสาร</h2>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveToFirestore}
+                                            disabled={isSaving}
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-green-300 disabled:cursor-not-allowed"
+                                        >
+                                            {isSaving ? (
+                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            ) : (
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
+                                                </svg>
+                                            )}
+                                            {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleExportPdf}
+                                            disabled={isLoading}
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed"
+                                        >
+                                            {isLoading ? (
+                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            ) : (
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                </svg>
+                                            )}
+                                            {isLoading ? 'กำลังสร้าง...' : 'PDF'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="bg-white p-1 rounded-lg shadow-lg">
+                                    {activeTab === 'delivery' ? (
+                                        <DocumentPreview ref={printableAreaRef} data={deliveryData} />
+                                    ) : (
+                                        <WarrantyPreview ref={printableAreaRef} data={warrantyData} />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    // History View
+                    <div className="bg-white p-6 rounded-lg shadow-lg">
+                        <HistoryList 
+                            activeDocType={activeTab} 
+                            onLoadDocument={handleLoadDocument}
+                        />
+                    </div>
+                )}
             </main>
         </div>
     );
