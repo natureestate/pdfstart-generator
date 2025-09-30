@@ -4,9 +4,18 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 3000",
+    "dev:host": "vite --port 3000 --host",
+    "restart": "npm run kill-port && npm run dev",
+    "restart:host": "npm run kill-port && npm run dev:host",
+    "kill-port": "lsof -ti:3000 | xargs kill -9 2>/dev/null || echo 'ไม่มี process ที่ใช้ port 3000'",
+    "kill-port:force": "lsof -ti:3000 | xargs -r kill -9 2>/dev/null || echo 'ไม่มี process ที่ใช้ port 3000'",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:analyze": "vite build --mode analyze",
+    "preview": "vite preview --port 4173",
+    "preview:host": "vite preview --port 4173 --host",
+    "clean": "rm -rf dist node_modules/.vite",
+    "setup": "npm install && npm run clean"
   },
   "dependencies": {
     "react-dom": "^19.1.1",
