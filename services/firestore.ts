@@ -6,7 +6,7 @@ import {
     doc, 
     getDoc, 
     getDocs, 
-    addDoc, 
+    setDoc, 
     updateDoc, 
     deleteDoc,
     query,
@@ -22,6 +22,36 @@ import { DeliveryNoteData, WarrantyData } from "../types";
 // Collection names
 const DELIVERY_NOTES_COLLECTION = "deliveryNotes";
 const WARRANTY_CARDS_COLLECTION = "warrantyCards";
+
+/**
+ * สร้าง Document ID ที่อ่านง่าย สำหรับใบส่งมอบงาน
+ * รูปแบบ: YYMMDD_DN-XXXX (เช่น 250930_DN-2025-001)
+ */
+const generateDeliveryNoteId = (docNumber: string): string => {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    
+    // ลบ "DN-" ออกจาก docNumber ถ้ามี แล้วใส่กลับในรูปแบบที่ต้องการ
+    const cleanDocNumber = docNumber.replace(/^DN-/i, '');
+    return `${yy}${mm}${dd}_DN-${cleanDocNumber}`;
+};
+
+/**
+ * สร้าง Document ID ที่อ่านง่าย สำหรับใบรับประกันสินค้า
+ * รูปแบบ: YYMMDD_SN-XXXX (เช่น 250930_SN-2025-TEST-001)
+ */
+const generateWarrantyCardId = (serialNumber: string): string => {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    
+    // ลบ "SN-" ออกจาก serialNumber ถ้ามี แล้วใส่กลับในรูปแบบที่ต้องการ
+    const cleanSerialNumber = serialNumber.replace(/^SN-/i, '');
+    return `${yy}${mm}${dd}_SN-${cleanSerialNumber}`;
+};
 
 // Interface สำหรับเอกสารที่บันทึกใน Firestore
 export interface FirestoreDocument {
@@ -40,12 +70,17 @@ export interface WarrantyDocument extends WarrantyData, FirestoreDocument {}
  */
 export const saveDeliveryNote = async (data: DeliveryNoteData): Promise<string> => {
     try {
-        const docRef = await addDoc(collection(db, DELIVERY_NOTES_COLLECTION), {
+        // สร้าง Document ID ที่อ่านง่าย
+        const docId = generateDeliveryNoteId(data.docNumber);
+        const docRef = doc(db, DELIVERY_NOTES_COLLECTION, docId);
+        
+        await setDoc(docRef, {
             ...data,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
         });
-        return docRef.id;
+        
+        return docId;
     } catch (error) {
         console.error("Error saving delivery note:", error);
         throw new Error("ไม่สามารถบันทึกใบส่งมอบงานได้");
@@ -168,12 +203,17 @@ export const searchDeliveryNoteByDocNumber = async (docNumber: string): Promise<
  */
 export const saveWarrantyCard = async (data: WarrantyData): Promise<string> => {
     try {
-        const docRef = await addDoc(collection(db, WARRANTY_CARDS_COLLECTION), {
+        // สร้าง Document ID ที่อ่านง่าย
+        const docId = generateWarrantyCardId(data.serialNumber);
+        const docRef = doc(db, WARRANTY_CARDS_COLLECTION, docId);
+        
+        await setDoc(docRef, {
             ...data,
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
         });
-        return docRef.id;
+        
+        return docId;
     } catch (error) {
         console.error("Error saving warranty card:", error);
         throw new Error("ไม่สามารถบันทึกใบรับประกันสินค้าได้");
