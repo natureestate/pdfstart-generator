@@ -1,0 +1,30 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ใบส่งมอบงาน (Delivery Notes)
+    match /deliveryNotes/{documentId} {
+      // อนุญาตให้อ่านได้ทุกคน (สำหรับ demo)
+      // ในระบบจริงควรเพิ่ม authentication
+      allow read: if true;
+      
+      // อนุญาตให้เขียนได้ทุกคน (สำหรับ demo)
+      // ในระบบจริงควรตรวจสอบ authentication และ validation
+      allow write: if true;
+    }
+    
+    // ใบรับประกันสินค้า (Warranty Cards)
+    match /warrantyCards/{documentId} {
+      // อนุญาตให้อ่านได้ทุกคน (สำหรับ demo)
+      allow read: if true;
+      
+      // อนุญาตให้เขียนได้ทุกคน (สำหรับ demo)
+      allow write: if true;
+    }
+    
+    // Default: ปฏิเสธทุก collection อื่นๆ
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
