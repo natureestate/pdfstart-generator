@@ -12,34 +12,31 @@ import type { DeliveryNoteDocument, WarrantyDocument } from './services/firestor
 
 const initialDeliveryData: DeliveryNoteData = {
     logo: null,
-    fromCompany: 'บริษัท ต้นทาง จำกัด (มหาชน)',
-    fromAddress: '123 ถนนสุขุมวิท, แขวงคลองเตย, เขตคลองเตย, กรุงเทพมหานคร 10110',
-    toCompany: 'บริษัท ปลายทาง คอร์ปอเรชั่น',
-    toAddress: '456 ถนนสีลม, แขวงสุริยวงศ์, เขตบางรัก, กรุงเทพมหานคร 10500',
+    fromCompany: '',
+    fromAddress: '',
+    toCompany: '',
+    toAddress: '',
     docNumber: `DN-${new Date().getFullYear()}-001`,
     date: new Date(),
-    project: 'โครงการพัฒนาระบบ ERP',
+    project: '',
     items: [
-        { description: 'ออกแบบ UI/UX สำหรับหน้า Dashboard', quantity: 1, unit: 'งาน', notes: '' },
-        { description: 'พัฒนา Backend API สำหรับระบบสมาชิก', quantity: 1, unit: 'งาน', notes: 'ทดสอบการทำงานเรียบร้อย' },
+        { description: '', quantity: 1, unit: 'งาน', notes: '' },
     ],
-    senderName: 'สมชาย ใจดี',
+    senderName: '',
     receiverName: '',
 };
 
 const initialWarrantyData: WarrantyData = {
     logo: null,
-    companyName: 'บริษัท สินค้าดี จำกัด',
-    companyAddress: '789 ถนนเพชรบุรี, แขวงทุ่งพญาไท, เขตราชเทวี, กรุงเทพมหานคร 10400',
-    customerName: 'คุณสุนทรี มีสุข',
-    customerContact: '081-234-5678',
-    productName: 'เครื่องฟอกอากาศ รุ่น Pro+',
-    serialNumber: 'SN-PRO-987654',
+    companyName: '',
+    companyAddress: '',
+    customerName: '',
+    customerContact: '',
+    productName: '',
+    serialNumber: '',
     purchaseDate: new Date(),
-    warrantyPeriod: '2 ปี',
-    terms: `1. การรับประกันนี้ครอบคลุมเฉพาะความเสียหายที่เกิดจากความบกพร่องในการผลิตเท่านั้น
-2. บริษัทฯ จะไม่รับประกันความเสียหายที่เกิดจากการใช้งานผิดประเภท อุบัติเหตุ หรือการดัดแปลงแก้ไข
-3. กรุณาเก็บใบรับประกันนี้ไว้เป็นหลักฐานในการขอรับบริการ`
+    warrantyPeriod: '',
+    terms: ''
 };
 
 type DocType = 'delivery' | 'warranty';
