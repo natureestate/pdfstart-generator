@@ -11,7 +11,8 @@ import {
     deleteObject,
     uploadString,
     listAll,
-    getMetadata 
+    getMetadata,
+    getBlob
 } from 'firebase/storage';
 
 // กำหนด path สำหรับเก็บโลโก้ใน Storage
@@ -229,5 +230,87 @@ export const formatFileSize = (bytes: number): string => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+};
+
+/**
+ * แปลงรูปภาพจาก Storage path เป็น Base64 เพื่อหลีกเลี่ยงปัญหา CORS
+ * ใช้ Firebase SDK ดึง blob แล้วแปลงเป็น Base64
+ * @param storagePath - path ของรูปใน Storage (เช่น "logos/logo-123.jpg")
+ * @returns Base64 string หรือ null หากเกิดข้อผิดพลาด
+ */
+export const getImageAsBase64FromPath = async (storagePath: string): Promise<string | null> => {
+    try {
+        console.log('Converting image to Base64 from path:', storagePath);
+        const imageRef = ref(storage, storagePath);
+        const blob = await getBlob(imageRef);
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                console.log('Successfully converted image to Base64 via Firebase SDK');
+                resolve(reader.result as string);
+            };
+            reader.onerror = (error) => {
+                console.error('FileReader error:', error);
+                reject(error);
+            };
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('Error converting image to base64:', error);
+        return null;
+    }
+};
+
+/**
+ * แปลง Firebase Storage URL เป็น Base64 โดยใช้ Firebase SDK
+ * วิธีนี้จะไม่มีปัญหา CORS เพราะใช้ Firebase SDK authentication
+ * @param url - Firebase Storage URL
+ * @returns Base64 string หรือ null หากเกิดข้อผิดพลาด
+ */
+export const convertStorageUrlToBase64 = async (url: string): Promise<string | null> => {
+    try {
+        console.log('Converting Storage URL to Base64:', url);
+        
+        // ตรวจสอบว่าเป็น Firebase Storage URL หรือไม่
+        if (!url.includes('firebasestorage.googleapis.com')) {
+            console.log('Not a Firebase Storage URL, skipping conversion');
+            return url; // คืนค่า URL เดิม ถ้าไม่ใช่ Firebase Storage
+        }
+
+        // Extract path from URL
+        // URL format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}
+        const storagePath = getStoragePathFromUrl(url);
+        if (!storagePath) {
+            console.error('Could not extract storage path from URL');
+            return null;
+        }
+
+        // ใช้ Firebase SDK ดึง blob และแปลงเป็น Base64
+        return await getImageAsBase64FromPath(storagePath);
+    } catch (error) {
+        console.error('Error converting storage URL to base64:', error);
+        return null;
+    }
+};
+
+/**
+ * ตรวจสอบว่า URL ต้องการการแปลงเป็น Base64 หรือไม่
+ * @param url - URL ที่ต้องการตรวจสอบ
+ * @returns true ถ้าต้องการแปลง (เป็น Firebase Storage URL)
+ */
+export const needsBase64Conversion = (url: string | null): boolean => {
+    if (!url) return false;
+    
+    // ถ้าเป็น Base64 อยู่แล้ว ไม่ต้องแปลง
+    if (url.startsWith('data:')) return false;
+    
+    // ถ้าเป็น local path ไม่ต้องแปลง
+    if (url.startsWith('/')) return false;
+    
+    // ถ้าเป็น Firebase Storage URL ต้องแปลง
+    if (url.includes('firebasestorage.googleapis.com')) return true;
+    
+    return false;
 };
 

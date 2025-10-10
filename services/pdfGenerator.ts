@@ -2,9 +2,11 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { font } from '../constants/IBMPlexSansThaiBase64';
+import { convertStorageUrlToBase64, needsBase64Conversion } from './logoStorage';
 
 /**
  * แปลงรูปภาพจาก URL เป็น Base64 เพื่อแก้ปัญหา CORS ใน html2canvas
+ * สำหรับ Firebase Storage URL จะใช้ Firebase SDK แทน fetch เพื่อหลีกเลี่ยง CORS
  * @param url - URL ของรูปภาพ
  * @returns Base64 string หรือ null หากเกิดข้อผิดพลาด
  */
@@ -16,11 +18,20 @@ const convertImageToBase64 = async (url: string): Promise<string | null> => {
             return url;
         }
 
-        // เดิม: เคยข้ามการแปลง local path → ทำให้ SVG/รูปไม่ติดใน PDF บางกรณี
-        // แก้ไข: แปลงทุกกรณี (ยกเว้น data:) เพื่อให้ html2canvas ดึงจาก Data URI เสมอ
+        // ✅ สำหรับ Firebase Storage URL ใช้ Firebase SDK เพื่อหลีกเลี่ยงปัญหา CORS
+        if (needsBase64Conversion(url)) {
+            console.log('Converting Firebase Storage URL via SDK (no CORS issue)');
+            const base64 = await convertStorageUrlToBase64(url);
+            if (base64) {
+                console.log('Successfully converted via Firebase SDK');
+                return base64;
+            }
+            // ถ้า Firebase SDK ล้มเหลว ลอง fallback เป็น fetch
+            console.warn('Firebase SDK conversion failed, trying fetch fallback...');
+        }
 
-        // สำหรับ external URL (Firebase Storage) ให้แปลงเป็น Base64
-        console.log('Converting external URL to Base64:', url);
+        // สำหรับ URL อื่นๆ หรือ fallback ให้ใช้ fetch แบบเดิม
+        console.log('Converting URL to Base64 via fetch:', url);
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -32,7 +43,7 @@ const convertImageToBase64 = async (url: string): Promise<string | null> => {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = () => {
-                console.log('Successfully converted image to Base64');
+                console.log('Successfully converted image to Base64 via fetch');
                 resolve(reader.result as string);
             };
             reader.onerror = () => {
