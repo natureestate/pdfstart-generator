@@ -63,6 +63,18 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isOwner(resource.data.userId);
     }
     
+    // Service Templates (Template สำหรับข้อมูลสินค้า/บริการ)
+    match /serviceTemplates/{templateId} {
+      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้วและเป็นเจ้าของ template
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      
+      // อนุญาตให้สร้าง template ใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้แก้ไขและลบได้เฉพาะเจ้าของ template
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+    
     // Document Numbers (เลขที่เอกสารอัตโนมัติ - Running Number)
     match /documentNumbers/{counterId} {
       // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้ว และ counterId ต้องขึ้นต้นด้วย userId ของตัวเอง
