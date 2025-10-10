@@ -48,11 +48,17 @@ const initialWarrantyData: WarrantyData = {
     productDetail: '',
     houseModel: '',
     batchNo: '',
+    showBatchNo: false, // เพิ่มฟิลด์ใหม่: ไม่แสดง Batch No. โดย default
     purchaseDate: new Date(),
     // การรับประกัน
     warrantyPeriod: '',
     warrantyEndDate: null,
     terms: '',
+    // การรับประกันแบบงานรับสร้างบ้าน
+    useMultipleWarrantyTypes: false, // เพิ่มฟิลด์ใหม่: ไม่ใช้การรับประกันหลายประเภทโดย default
+    warrantyGeneral: false,
+    warrantyRoof: false,
+    warrantyStructure: false,
     // ข้อมูลเอกสาร
     warrantyNumber: '',
     issueDate: new Date(),
@@ -95,6 +101,22 @@ const AppContent: React.FC = () => {
             logoType: sharedLogoType,
         }));
     }, [sharedLogo, sharedLogoUrl, sharedLogoType]);
+
+    /**
+     * ตั้งค่า default logo ของ company
+     */
+    const handleSetDefaultLogo = async (logoUrl: string) => {
+        if (!currentCompany?.id) {
+            throw new Error('ไม่พบข้อมูลบริษัท');
+        }
+
+        const { setCompanyDefaultLogo } = await import('./services/companies');
+        await setCompanyDefaultLogo(currentCompany.id, logoUrl);
+        
+        // รีเฟรช company context เพื่อให้ได้ defaultLogoUrl ใหม่
+        // (ในอนาคตอาจต้องเพิ่ม refreshCompanies ใน CompanyContext)
+        showToast('ตั้งค่า default logo สำเร็จ', 'success');
+    };
     
     useEffect(() => {
         if (notification.show) {
@@ -267,11 +289,13 @@ const AppContent: React.FC = () => {
                                     sharedLogo={sharedLogo}
                                     sharedLogoUrl={sharedLogoUrl}
                                     sharedLogoType={sharedLogoType}
+                                    companyDefaultLogoUrl={currentCompany?.defaultLogoUrl}
                                     onLogoChange={(logo, logoUrl, logoType) => {
                                         setSharedLogo(logo);
                                         setSharedLogoUrl(logoUrl);
                                         setSharedLogoType(logoType);
                                     }}
+                                    onSetDefaultLogo={handleSetDefaultLogo}
                                 />
                             ) : (
                                 <WarrantyForm
@@ -280,11 +304,13 @@ const AppContent: React.FC = () => {
                                     sharedLogo={sharedLogo}
                                     sharedLogoUrl={sharedLogoUrl}
                                     sharedLogoType={sharedLogoType}
+                                    companyDefaultLogoUrl={currentCompany?.defaultLogoUrl}
                                     onLogoChange={(logo, logoUrl, logoType) => {
                                         setSharedLogo(logo);
                                         setSharedLogoUrl(logoUrl);
                                         setSharedLogoType(logoType);
                                     }}
+                                    onSetDefaultLogo={handleSetDefaultLogo}
                                 />
                             )}
                         </div>

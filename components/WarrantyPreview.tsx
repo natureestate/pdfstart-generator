@@ -103,10 +103,13 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
                                     <p className="w-2/5 text-xs text-slate-600 font-medium">แบบบ้าน</p>
                                     <p className="w-3/5 text-xs font-medium text-slate-900">{data.houseModel || '...........................'}</p>
                                 </div>
-                                <div className="flex py-1 border-b border-slate-200">
-                                    <p className="w-2/5 text-xs text-slate-600 font-medium">Batch No.</p>
-                                    <p className="w-3/5 text-xs font-medium text-slate-900">{data.batchNo || '...........................'}</p>
-                                </div>
+                                {/* แสดง Batch No. เฉพาะเมื่อ showBatchNo เป็น true */}
+                                {data.showBatchNo && (
+                                    <div className="flex py-1 border-b border-slate-200">
+                                        <p className="w-2/5 text-xs text-slate-600 font-medium">Batch No.</p>
+                                        <p className="w-3/5 text-xs font-medium text-slate-900">{data.batchNo || '...........................'}</p>
+                                    </div>
+                                )}
                             </div>
                             <DetailRow label="วันที่ส่งมอบสินค้า" value={formatDate(data.purchaseDate)} />
                         </div>
@@ -119,16 +122,57 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
                             <span className="leading-none">การรับประกัน</span>
                         </h3>
                         <div className="mt-0.5 pl-1">
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="flex py-1 border-b border-slate-200">
-                                    <p className="w-2/5 text-xs text-slate-600 font-medium">ระยะเวลา</p>
-                                    <p className="w-3/5 text-xs font-bold text-green-700">{data.warrantyPeriod || '...........................'}</p>
+                            {/* แสดงการรับประกันแบบปกติ */}
+                            {!data.useMultipleWarrantyTypes && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex py-1 border-b border-slate-200">
+                                        <p className="w-2/5 text-xs text-slate-600 font-medium">ระยะเวลา</p>
+                                        <p className="w-3/5 text-xs font-bold text-green-700">{data.warrantyPeriod || '...........................'}</p>
+                                    </div>
+                                    <div className="flex py-1 border-b border-slate-200">
+                                        <p className="w-2/5 text-xs text-slate-600 font-medium">วันสิ้นสุด</p>
+                                        <p className="w-3/5 text-xs font-bold text-red-600">{formatDate(data.warrantyEndDate)}</p>
+                                    </div>
                                 </div>
-                                <div className="flex py-1 border-b border-slate-200">
-                                    <p className="w-2/5 text-xs text-slate-600 font-medium">วันสิ้นสุด</p>
-                                    <p className="w-3/5 text-xs font-bold text-red-600">{formatDate(data.warrantyEndDate)}</p>
+                            )}
+                            
+                            {/* แสดงการรับประกันแบบหลายประเภท (งานรับสร้างบ้าน) */}
+                            {data.useMultipleWarrantyTypes && (
+                                <div className="space-y-1.5">
+                                    <p className="text-xs font-semibold text-slate-700 mb-1">🏠 การรับประกันแบบงานรับสร้างบ้าน:</p>
+                                    
+                                    {data.warrantyGeneral && (
+                                        <div className="flex items-center py-1 px-2 bg-green-50 border border-green-200 rounded">
+                                            <span className="text-xs">✓</span>
+                                            <p className="ml-2 text-xs font-medium text-slate-800">
+                                                รับประกันทั่วไป <span className="font-bold text-green-700">1 ปี</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                    
+                                    {data.warrantyRoof && (
+                                        <div className="flex items-center py-1 px-2 bg-blue-50 border border-blue-200 rounded">
+                                            <span className="text-xs">✓</span>
+                                            <p className="ml-2 text-xs font-medium text-slate-800">
+                                                รับประกันงานหลังคา <span className="font-bold text-blue-700">3 ปี</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                    
+                                    {data.warrantyStructure && (
+                                        <div className="flex items-center py-1 px-2 bg-purple-50 border border-purple-200 rounded">
+                                            <span className="text-xs">✓</span>
+                                            <p className="ml-2 text-xs font-medium text-slate-800">
+                                                รับประกันงานโครงสร้าง <span className="font-bold text-purple-700">15 ปี</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                    
+                                    {!data.warrantyGeneral && !data.warrantyRoof && !data.warrantyStructure && (
+                                        <p className="text-xs text-slate-500 italic">ยังไม่ได้เลือกประเภทการรับประกัน</p>
+                                    )}
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </section>
 

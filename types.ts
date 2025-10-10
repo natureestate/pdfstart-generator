@@ -36,8 +36,9 @@ export interface Company {
     name: string;              // ชื่อบริษัท
     address?: string;          // ที่อยู่บริษัท (optional)
     userId: string;            // Admin คนแรก (คนที่สร้างบริษัท)
-    logoUrl?: string | null;   // โลโก้บริษัท
+    logoUrl?: string | null;   // โลโก้บริษัทปัจจุบัน (URL จาก Storage)
     logoType?: LogoType;       // ประเภทโลโก้
+    defaultLogoUrl?: string | null;  // โลโก้ default ของแต่ละองค์กร (URL จาก Storage)
     memberCount?: number;      // จำนวนสมาชิกในองค์กร
     createdAt?: Date;
     updatedAt?: Date;
@@ -81,12 +82,19 @@ export interface WarrantyData {
     productDetail: string;         // รายการสินค้า/รายละเอียด
     houseModel: string;            // แบบบ้าน
     batchNo: string;               // หมายเลขการผลิต (Batch No.)
+    showBatchNo?: boolean;         // แสดง Batch No. ในเอกสารหรือไม่
     purchaseDate: Date | null;     // วันที่ส่งมอบ
     
     // การรับประกัน
     warrantyPeriod: string;        // ระยะเวลารับประกัน
     warrantyEndDate: Date | null;  // วันที่สิ้นสุดการรับประกัน
     terms: string;                 // เงื่อนไขการรับประกัน
+    
+    // การรับประกันแบบงานรับสร้างบ้าน (Multiple warranty types)
+    useMultipleWarrantyTypes?: boolean;  // ใช้การรับประกันหลายประเภทหรือไม่
+    warrantyGeneral?: boolean;     // รับประกันทั่วไป (1 ปี)
+    warrantyRoof?: boolean;        // รับประกันงานหลังคา (3 ปี)
+    warrantyStructure?: boolean;   // รับประกันงานโครงสร้าง (15 ปี)
     
     // ข้อมูลเอกสาร
     warrantyNumber: string;        // เลขที่ใบรับประกัน

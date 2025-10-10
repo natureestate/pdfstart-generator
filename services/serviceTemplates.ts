@@ -90,9 +90,11 @@ export const getUserServiceTemplates = async (userId: string): Promise<ServiceTe
             templates.push({
                 id: doc.id,
                 serviceName: data.serviceName,
-                houseModel: data.houseModel,
-                warrantyPeriod: data.warrantyPeriod,
-                terms: data.terms,
+                productDetail: data.productDetail || '', // เพิ่มฟิลด์ productDetail
+                houseModel: data.houseModel || '', // เพิ่ม default value
+                batchNo: data.batchNo || '', // เพิ่มฟิลด์ batchNo
+                warrantyPeriod: data.warrantyPeriod || '', // เพิ่ม default value
+                terms: data.terms || '', // เพิ่ม default value
                 userId: data.userId,
                 createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
                 updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(),

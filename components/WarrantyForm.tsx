@@ -12,7 +12,9 @@ export interface WarrantyFormProps {
     sharedLogo?: string | null;
     sharedLogoUrl?: string | null;
     sharedLogoType?: LogoType;
+    companyDefaultLogoUrl?: string | null;
     onLogoChange?: (logo: string | null, logoUrl: string | null, logoType: LogoType) => void;
+    onSetDefaultLogo?: (logoUrl: string) => Promise<void>;
 }
 
 const FormDivider: React.FC<{ title: string }> = ({ title }) => (
@@ -32,7 +34,9 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
     sharedLogo,
     sharedLogoUrl,
     sharedLogoType,
-    onLogoChange
+    companyDefaultLogoUrl,
+    onLogoChange,
+    onSetDefaultLogo
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showCompanySelector, setShowCompanySelector] = useState(false);
@@ -136,7 +140,9 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
                         currentLogo={sharedLogo !== undefined ? sharedLogo : data.logo}
                         logoUrl={sharedLogoUrl !== undefined ? sharedLogoUrl : data.logoUrl}
                         logoType={sharedLogoType || data.logoType || 'default'}
+                        companyDefaultLogoUrl={companyDefaultLogoUrl}
                         onChange={handleLogoChange}
+                        onSetDefaultLogo={onSetDefaultLogo}
                         showLabel={true}
                         label="โลโก้บริษัท"
                      />
@@ -310,6 +316,20 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
                             />
                         </div>
                     </div>
+                    
+                    {/* Checkbox สำหรับแสดง Batch No. ในเอกสาร */}
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="showBatchNo"
+                            checked={data.showBatchNo || false}
+                            onChange={(e) => handleDataChange('showBatchNo', e.target.checked)}
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="showBatchNo" className="ml-2 block text-sm text-slate-700">
+                            แสดงหมายเลขการผลิต (Batch No.) ในเอกสาร
+                        </label>
+                    </div>
                     <div>
                         <label htmlFor="warrantyPeriod" className="block text-sm font-medium text-slate-700">ระยะเวลารับประกัน</label>
                         <input 
@@ -319,12 +339,89 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
                             onChange={(e) => handleDataChange('warrantyPeriod', e.target.value)} 
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" 
                             placeholder="เช่น 3 ปี, 5 ปี"
+                            disabled={data.useMultipleWarrantyTypes}
                         />
+                        {data.useMultipleWarrantyTypes && (
+                            <p className="mt-1 text-xs text-amber-600">💡 กำลังใช้การรับประกันแบบหลายประเภท (ด้านล่าง)</p>
+                        )}
                     </div>
                 </div>
 
                 <FormDivider title="การรับประกัน" />
                 <div className="space-y-4">
+                    {/* Checkbox สำหรับเปิดใช้การรับประกันแบบงานรับสร้างบ้าน */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-start">
+                            <input
+                                type="checkbox"
+                                id="useMultipleWarrantyTypes"
+                                checked={data.useMultipleWarrantyTypes || false}
+                                onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    handleDataChange('useMultipleWarrantyTypes', checked);
+                                    // ถ้าเปิดใช้งาน ให้ล้างค่า warrantyPeriod
+                                    if (checked) {
+                                        handleDataChange('warrantyPeriod', '');
+                                    }
+                                }}
+                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mt-1"
+                            />
+                            <label htmlFor="useMultipleWarrantyTypes" className="ml-3 block">
+                                <span className="text-sm font-semibold text-slate-800">🏠 ใช้การรับประกันแบบงานรับสร้างบ้าน (หลายประเภท)</span>
+                                <p className="text-xs text-slate-600 mt-1">เหมาะสำหรับงานก่อสร้างที่มีการรับประกันแยกตามประเภทงาน</p>
+                            </label>
+                        </div>
+
+                        {/* แสดง Checkbox ประเภทการรับประกันเมื่อเปิดใช้งาน */}
+                        {data.useMultipleWarrantyTypes && (
+                            <div className="mt-4 ml-7 space-y-3 border-t border-blue-200 pt-4">
+                                <p className="text-xs font-medium text-slate-700 mb-2">เลือกประเภทการรับประกัน:</p>
+                                
+                                {/* รับประกันทั่วไป 1 ปี */}
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="warrantyGeneral"
+                                        checked={data.warrantyGeneral || false}
+                                        onChange={(e) => handleDataChange('warrantyGeneral', e.target.checked)}
+                                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                                    />
+                                    <label htmlFor="warrantyGeneral" className="ml-2 block text-sm text-slate-700">
+                                        <span className="font-medium">รับประกันทั่วไป</span> <span className="text-green-600 font-semibold">1 ปี</span>
+                                    </label>
+                                </div>
+
+                                {/* รับประกันงานหลังคา 3 ปี */}
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="warrantyRoof"
+                                        checked={data.warrantyRoof || false}
+                                        onChange={(e) => handleDataChange('warrantyRoof', e.target.checked)}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                    <label htmlFor="warrantyRoof" className="ml-2 block text-sm text-slate-700">
+                                        <span className="font-medium">รับประกันงานหลังคา</span> <span className="text-blue-600 font-semibold">3 ปี</span>
+                                    </label>
+                                </div>
+
+                                {/* รับประกันงานโครงสร้าง 15 ปี */}
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="warrantyStructure"
+                                        checked={data.warrantyStructure || false}
+                                        onChange={(e) => handleDataChange('warrantyStructure', e.target.checked)}
+                                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                    />
+                                    <label htmlFor="warrantyStructure" className="ml-2 block text-sm text-slate-700">
+                                        <span className="font-medium">รับประกันงานโครงสร้าง</span> <span className="text-purple-600 font-semibold">15 ปี</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="warrantyEndDate" className="block text-sm font-medium text-slate-700">วันสิ้นสุดการรับประกัน</label>
