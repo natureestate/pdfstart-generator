@@ -13,7 +13,8 @@ import {
     listAllLogos,
     deleteLogoByPath,
     formatFileSize,
-    LogoItem
+    LogoItem,
+    convertStorageUrlToBase64
 } from '../services/logoStorage';
 
 interface LogoManagerProps {
@@ -115,13 +116,25 @@ const LogoManager: React.FC<LogoManagerProps> = ({
             setIsUploading(true);
             try {
                 const uploadedUrl = await uploadLogoBase64(base64String);
-                // อัปเดตด้วย Storage URL
-                onChange(uploadedUrl, uploadedUrl, 'uploaded');
-                console.log('โลโก้อัปโหลดสำเร็จ:', uploadedUrl);
+                console.log('✅ โลโก้อัปโหลดสำเร็จ:', uploadedUrl);
+                
+                // ✅ แปลง Firebase Storage URL เป็น Base64 เพื่อหลีกเลี่ยงปัญหา CORS
+                console.log('🔄 กำลังแปลง Storage URL เป็น Base64 เพื่อหลีกเลี่ยง CORS...');
+                const base64FromStorage = await convertStorageUrlToBase64(uploadedUrl);
+                
+                if (base64FromStorage) {
+                    // ใช้ Base64 ที่แปลงจาก Storage (คุณภาพดีกว่า + ไม่มีปัญหา CORS)
+                    onChange(base64FromStorage, uploadedUrl, 'uploaded');
+                    console.log('✅ แปลงเป็น Base64 สำเร็จ - ไม่มีปัญหา CORS!');
+                } else {
+                    // Fallback: ใช้ Base64 เดิมถ้าแปลงไม่สำเร็จ
+                    onChange(base64String, uploadedUrl, 'uploaded');
+                    console.warn('⚠️  ใช้ Base64 เดิม (แปลงจาก Storage ไม่สำเร็จ)');
+                }
             } catch (error) {
-                console.error('ไม่สามารถอัปโหลดโลโก้ได้:', error);
+                console.error('❌ ไม่สามารถอัปโหลดโลโก้ได้:', error);
                 setUploadError('ไม่สามารถอัปโหลดโลโก้ได้ กรุณาลองใหม่');
-                // ถ้าอัปโหลดไม่สำเร็จ ยังคงใช้ Base64 ได้
+                // ถ้าอัปโหลดไม่สำเร็จ ยังคงใช้ Base64 เดิมได้
             } finally {
                 setIsUploading(false);
             }
@@ -179,10 +192,35 @@ const LogoManager: React.FC<LogoManagerProps> = ({
     /**
      * เลือกโลโก้จาก gallery
      */
-    const handleSelectLogo = (logo: LogoItem) => {
-        onChange(logo.url, logo.url, 'uploaded');
-        setShowGallery(false);
-        setUploadError(null);
+    const handleSelectLogo = async (logo: LogoItem) => {
+        console.log('📷 เลือกโลโก้จาก Gallery:', logo.name);
+        
+        // แสดง loading state
+        setIsUploading(true);
+        
+        try {
+            // ✅ แปลง Firebase Storage URL เป็น Base64 เพื่อหลีกเลี่ยงปัญหา CORS
+            console.log('🔄 กำลังแปลงโลโก้จาก Gallery เป็น Base64...');
+            const base64FromStorage = await convertStorageUrlToBase64(logo.url);
+            
+            if (base64FromStorage) {
+                // ใช้ Base64 (ไม่มีปัญหา CORS)
+                onChange(base64FromStorage, logo.url, 'uploaded');
+                console.log('✅ แปลงโลโก้จาก Gallery เป็น Base64 สำเร็จ!');
+            } else {
+                // Fallback: ใช้ URL ตรงๆ (อาจมีปัญหา CORS)
+                onChange(logo.url, logo.url, 'uploaded');
+                console.warn('⚠️  ใช้ URL ตรงๆ จาก Gallery (อาจมีปัญหา CORS)');
+            }
+            
+            setShowGallery(false);
+            setUploadError(null);
+        } catch (error) {
+            console.error('❌ ไม่สามารถแปลงโลโก้จาก Gallery:', error);
+            setUploadError('ไม่สามารถโหลดโลโก้ได้ กรุณาลองใหม่');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     /**
