@@ -8,14 +8,37 @@ export interface WorkItem {
 // ประเภทของโลโก้
 export type LogoType = 'default' | 'custom' | 'uploaded';
 
+// บทบาทของผู้ใช้ในองค์กร
+export type UserRole = 'admin' | 'member';
+
+// สถานะของสมาชิกในองค์กร
+export type MemberStatus = 'active' | 'pending' | 'inactive';
+
+// ข้อมูลสมาชิกในองค์กร
+export interface CompanyMember {
+    id?: string;                // Document ID
+    companyId: string;          // ID ขององค์กร
+    userId: string;             // User ID จาก Firebase Auth
+    email: string;              // อีเมลของ User
+    phoneNumber?: string;       // เบอร์โทรศัพท์
+    displayName?: string;       // ชื่อแสดง
+    role: UserRole;             // บทบาท: admin หรือ member
+    status: MemberStatus;       // สถานะ: active, pending, inactive
+    joinedAt?: Date;            // วันที่เข้าร่วม
+    invitedBy?: string;         // User ID ของคนที่เชิญ
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
 // ข้อมูลบริษัท
 export interface Company {
     id?: string;
     name: string;              // ชื่อบริษัท
     address?: string;          // ที่อยู่บริษัท (optional)
-    userId: string;            // Admin (คนที่สร้างบริษัท - มีสิทธิ์ลบ)
+    userId: string;            // Admin คนแรก (คนที่สร้างบริษัท)
     logoUrl?: string | null;   // โลโก้บริษัท
     logoType?: LogoType;       // ประเภทโลโก้
+    memberCount?: number;      // จำนวนสมาชิกในองค์กร
     createdAt?: Date;
     updatedAt?: Date;
 }

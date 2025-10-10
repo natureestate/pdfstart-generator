@@ -1,12 +1,31 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCompany } from '../contexts/CompanyContext';
 import { signOut } from '../services/auth';
 import CompanySelector from './CompanySelector';
+import UserManagement from './UserManagement';
+import { checkIsAdmin } from '../services/companyMembers';
 
 const Header: React.FC = () => {
     const { user } = useAuth();
+    const { currentCompany } = useCompany();
     const [showDropdown, setShowDropdown] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [showUserManagement, setShowUserManagement] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    // ตรวจสอบสิทธิ์ Admin เมื่อเปลี่ยนองค์กร
+    React.useEffect(() => {
+        const checkAdminStatus = async () => {
+            if (user && currentCompany?.id) {
+                const adminStatus = await checkIsAdmin(currentCompany.id, user.uid);
+                setIsAdmin(adminStatus);
+            } else {
+                setIsAdmin(false);
+            }
+        };
+        checkAdminStatus();
+    }, [user, currentCompany]);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -40,11 +59,39 @@ const Header: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* ส่วนขวา - Company Selector, User Info และ Logout */}
+                    {/* ส่วนขวา - Company Selector, User Management, User Info และ Logout */}
                     {user && (
                         <div className="flex items-center gap-4">
                             {/* Company Selector */}
                             <CompanySelector />
+
+                            {/* แสดงบทบาทและปุ่มจัดการสมาชิก */}
+                            {currentCompany && (
+                                <div className="flex items-center gap-2">
+                                    {/* Badge แสดงบทบาท */}
+                                    <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                        isAdmin 
+                                            ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    }`}>
+                                        {isAdmin ? '👑 Admin' : '👤 Member'}
+                                    </div>
+                                    
+                                    {/* ปุ่มจัดการสมาชิก (แสดงเฉพาะ Admin) */}
+                                    {isAdmin && (
+                                        <button
+                                            onClick={() => setShowUserManagement(true)}
+                                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 shadow-sm"
+                                            title="จัดการสมาชิกในองค์กร"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                            </svg>
+                                            <span className="hidden lg:inline">จัดการสมาชิก</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
 
                             {/* User Menu */}
                             <div className="relative">
@@ -138,6 +185,19 @@ const Header: React.FC = () => {
                     className="fixed inset-0 z-40"
                     onClick={() => setShowDropdown(false)}
                 />
+            )}
+
+            {/* Modal จัดการสมาชิก */}
+            {showUserManagement && currentCompany && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                        <UserManagement
+                            companyId={currentCompany.id!}
+                            companyName={currentCompany.name}
+                            onClose={() => setShowUserManagement(false)}
+                        />
+                    </div>
+                </div>
             )}
         </header>
     );

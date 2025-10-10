@@ -124,6 +124,25 @@ export const isAuthenticated = (): boolean => {
  * @returns RecaptchaVerifier instance
  */
 export const createRecaptchaVerifier = (elementId: string): RecaptchaVerifier => {
+    // ตรวจสอบว่าเป็น localhost หรือไม่
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1';
+    
+    if (isLocalhost) {
+        console.log('🔧 Development Mode: ใช้ reCAPTCHA แบบ visible สำหรับ localhost');
+        // ใช้ visible mode สำหรับ localhost เพื่อให้ทดสอบได้ง่าย
+        return new RecaptchaVerifier(auth, elementId, {
+            size: 'normal', // เปลี่ยนเป็น normal เพื่อให้เห็น checkbox
+            callback: () => {
+                console.log('✅ reCAPTCHA resolved สำหรับ Phone Auth (localhost)');
+            },
+            'expired-callback': () => {
+                console.warn('⚠️ reCAPTCHA หมดอายุ');
+            }
+        });
+    }
+    
+    // Production: ใช้ invisible mode
     return new RecaptchaVerifier(auth, elementId, {
         size: 'invisible',
         callback: () => {

@@ -12,28 +12,52 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
-    // ใบส่งมอบงาน (Delivery Notes)
-    match /deliveryNotes/{documentId} {
-      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้วและเป็นเจ้าของเอกสาร
-      allow read: if isAuthenticated() && isOwner(resource.data.userId);
-      
-      // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      
-      // อนุญาตให้แก้ไขและลบได้เฉพาะเจ้าของเอกสาร
-      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+    // ฟังก์ชันตรวจสอบว่าเป็นสมาชิกขององค์กรหรือไม่
+    function isMemberOfCompany(companyId) {
+      return exists(/databases/$(database)/documents/companyMembers/$(request.auth.uid + '_' + companyId))
+        || exists(/databases/$(database)/documents/companyMembers/$(companyId + '_' + request.auth.uid));
     }
     
-    // ใบรับประกันสินค้า (Warranty Cards)
-    match /warrantyCards/{documentId} {
-      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้วและเป็นเจ้าของเอกสาร
-      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+    // ฟังก์ชันตรวจสอบว่าเป็น Admin ขององค์กรหรือไม่
+    function isAdminOfCompany(companyId) {
+      let memberDoc = get(/databases/$(database)/documents/companyMembers/$(request.auth.uid + '_' + companyId));
+      return memberDoc.data.role == 'admin' && memberDoc.data.status == 'active';
+    }
+    
+    // ใบส่งมอบงาน (Delivery Notes) - รองรับ Multi-user
+    match /deliveryNotes/{documentId} {
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน (ถ้ามี companyId)
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
       
-      // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // อนุญาตให้แก้ไขและลบได้เฉพาะเจ้าของเอกสาร
-      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      allow update, delete: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
+    }
+    
+    // ใบรับประกันสินค้า (Warranty Cards) - รองรับ Multi-user
+    match /warrantyCards/{documentId} {
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน (ถ้ามี companyId)
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
+      
+      // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      allow update, delete: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
     }
     
     // Company Profiles (ข้อมูลบริษัทที่บันทึกไว้)
@@ -50,46 +74,81 @@ service cloud.firestore {
     
     // Companies (ข้อมูลบริษัทสำหรับระบบ Multi-Company)
     match /companies/{companyId} {
-      // อนุญาตให้ทุกคนที่ Login แล้วอ่านบริษัททั้งหมดได้
-      allow read: if isAuthenticated();
+      // อนุญาตให้อ่านได้เฉพาะสมาชิกในองค์กร
+      allow read: if isAuthenticated() && isMemberOfCompany(companyId);
       
-      // อนุญาตให้สร้างบริษัทใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      // อนุญาตให้สร้างบริษัทใหม่ได้เฉพาะผู้ที่ Login แล้ว
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // อนุญาตให้ทุกคนแก้ไขได้
-      allow update: if isAuthenticated();
+      // อนุญาตให้แก้ไขได้เฉพาะสมาชิกในองค์กร
+      allow update: if isAuthenticated() && isMemberOfCompany(companyId);
       
-      // อนุญาตให้ลบได้เฉพาะ Admin (คนที่สร้างบริษัท)
+      // อนุญาตให้ลบได้เฉพาะ Admin คนแรก (คนที่สร้างบริษัท)
       allow delete: if isAuthenticated() && isOwner(resource.data.userId);
     }
     
-    // Service Templates (Template สำหรับข้อมูลสินค้า/บริการ)
-    match /serviceTemplates/{templateId} {
-      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้วและเป็นเจ้าของ template
-      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+    // Company Members (สมาชิกในองค์กร)
+    match /companyMembers/{memberId} {
+      // อนุญาตให้อ่านได้เฉพาะสมาชิกในองค์กรเดียวกัน
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        isMemberOfCompany(resource.data.companyId)
+      );
       
-      // อนุญาตให้สร้าง template ใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // อนุญาตให้สร้างได้เฉพาะ Admin ขององค์กร
+      allow create: if isAuthenticated() && (
+        request.resource.data.userId == request.auth.uid || // สร้างตัวเอง (Admin คนแรก)
+        isAdminOfCompany(request.resource.data.companyId)   // Admin เชิญคนอื่น
+      );
       
-      // อนุญาตให้แก้ไขและลบได้เฉพาะเจ้าของ template
-      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+      // อนุญาตให้แก้ไขได้เฉพาะ Admin หรือตัวเอง
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        isAdminOfCompany(resource.data.companyId)
+      );
+      
+      // อนุญาตให้ลบได้เฉพาะ Admin
+      allow delete: if isAuthenticated() && isAdminOfCompany(resource.data.companyId);
     }
     
-    // Document Numbers (เลขที่เอกสารอัตโนมัติ - Running Number)
+    // Service Templates (Template สำหรับข้อมูลสินค้า/บริการ) - รองรับ Multi-user
+    match /serviceTemplates/{templateId} {
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน (ถ้ามี companyId)
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
+      
+      // อนุญาตให้สร้าง template ใหม่ได้เฉพาะผู้ที่ Login แล้ว
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      allow update, delete: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
+    }
+    
+    // Document Numbers (เลขที่เอกสารอัตโนมัติ - Running Number) - รองรับ Multi-user
     match /documentNumbers/{counterId} {
-      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้ว และ counterId ต้องขึ้นต้นด้วย userId ของตัวเอง
-      // รูปแบบ counterId: {userId}_{prefix}_{date}
-      allow read: if isAuthenticated() && counterId.matches('^' + request.auth.uid + '_.*');
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      // รูปแบบ counterId: {companyId}_{prefix}_{date} หรือ {userId}_{prefix}_{date}
+      allow read: if isAuthenticated() && (
+        counterId.matches('^' + request.auth.uid + '_.*') ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
       
-      // อนุญาตให้สร้าง counter ใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
-      allow create: if isAuthenticated() 
-                    && request.resource.data.userId == request.auth.uid
-                    && counterId.matches('^' + request.auth.uid + '_.*');
+      // อนุญาตให้สร้าง counter ใหม่ได้เฉพาะผู้ที่ Login แล้ว
+      allow create: if isAuthenticated() && (
+        (request.resource.data.userId == request.auth.uid && counterId.matches('^' + request.auth.uid + '_.*')) ||
+        (request.resource.data.companyId != null && isMemberOfCompany(request.resource.data.companyId))
+      );
       
-      // อนุญาตให้แก้ไข counter ได้เฉพาะเจ้าของ (ตรวจสอบจาก counterId และ userId ใน data)
-      allow update: if isAuthenticated() 
-                    && counterId.matches('^' + request.auth.uid + '_.*')
-                    && resource.data.userId == request.auth.uid;
+      // อนุญาตให้แก้ไข counter ได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      allow update: if isAuthenticated() && (
+        (counterId.matches('^' + request.auth.uid + '_.*') && resource.data.userId == request.auth.uid) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
       
       // ไม่อนุญาตให้ลบ counter (เพื่อรักษาความสมบูรณ์ของข้อมูล)
       allow delete: if false;

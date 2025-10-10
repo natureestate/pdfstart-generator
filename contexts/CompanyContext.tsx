@@ -7,6 +7,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Company } from '../types';
 import { getUserCompanies } from '../services/companies';
 import { useAuth } from './AuthContext';
+import { checkNeedMigration, migrateOldCompanies } from '../services/migration';
 
 interface CompanyContextType {
     // บริษัทที่เลือกปัจจุบัน
@@ -50,6 +51,18 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
 
         try {
             setLoading(true);
+            
+            // ตรวจสอบว่าต้อง Migrate หรือไม่
+            const needMigration = await checkNeedMigration();
+            if (needMigration) {
+                console.log('🔄 พบองค์กรเก่าที่ต้อง Migrate...');
+                try {
+                    await migrateOldCompanies();
+                    console.log('✅ Migration สำเร็จ');
+                } catch (error) {
+                    console.error('❌ Migration ล้มเหลว:', error);
+                }
+            }
             
             // ดึงรายการบริษัททั้งหมด
             const companiesList = await getUserCompanies();

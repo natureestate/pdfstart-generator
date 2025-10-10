@@ -12,7 +12,7 @@ const CompanySelector: React.FC = () => {
     // Debug log
     console.log('🏢 CompanySelector rendered');
     
-    const { currentCompany, companies, selectCompany, refreshCompanies } = useCompany();
+    const { currentCompany, companies, selectCompany, refreshCompanies, loading } = useCompany();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newCompanyName, setNewCompanyName] = useState('');
@@ -23,6 +23,7 @@ const CompanySelector: React.FC = () => {
     // Debug log
     console.log('🏢 Current Company:', currentCompany);
     console.log('🏢 All Companies:', companies);
+    console.log('🏢 Loading:', loading);
 
     /**
      * เลือกบริษัท
@@ -69,63 +70,118 @@ const CompanySelector: React.FC = () => {
         }
     };
 
-    if (!currentCompany) {
-        return null;
+    // แสดง Loading state
+    if (loading) {
+        return (
+            <div className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg">
+                <svg className="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span className="text-sm text-gray-500">กำลังโหลด...</span>
+            </div>
+        );
     }
 
     return (
         <div className="relative">
             {/* Dropdown Button */}
             <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={() => {
+                    if (companies.length === 0) {
+                        setShowCreateModal(true);
+                    } else if (currentCompany) {
+                        setShowDropdown(!showDropdown);
+                    } else {
+                        setShowCreateModal(true);
+                    }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors min-w-[200px]"
+                title={currentCompany ? `คลิกเพื่อเปลี่ยนองค์กร (${companies.length} องค์กร)` : 'คลิกเพื่อสร้างองค์กร'}
             >
-                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
-                <span className="font-medium text-gray-700">{currentCompany.name}</span>
-                <svg className={`w-4 h-4 text-gray-500 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex-1 text-left">
+                    <span className="font-medium text-gray-700 block truncate">
+                        {currentCompany ? currentCompany.name : 'สร้างองค์กรใหม่'}
+                    </span>
+                    {companies.length > 0 && (
+                        <span className="text-xs text-gray-500">
+                            {companies.length} องค์กร
+                        </span>
+                    )}
+                </div>
+                <svg className={`w-4 h-4 text-gray-500 transition-transform flex-shrink-0 ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
 
             {/* Dropdown Menu */}
-            {showDropdown && (
-                <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                    <div className="p-2 border-b border-gray-200">
-                        <p className="text-xs text-gray-500 px-2 py-1">บริษัทของคุณ</p>
+            {showDropdown && companies.length > 0 && (
+                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="p-3 border-b border-gray-200 bg-gray-50">
+                        <p className="text-sm font-semibold text-gray-700">เลือกองค์กร</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{companies.length} องค์กรทั้งหมด</p>
                     </div>
 
-                    <div className="max-h-64 overflow-y-auto">
-                        {companies.map((company) => (
-                            <button
-                                key={company.id}
-                                onClick={() => handleSelectCompany(company)}
-                                className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                                    currentCompany.id === company.id ? 'bg-indigo-50' : ''
-                                }`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <p className={`font-medium ${
-                                            currentCompany.id === company.id ? 'text-indigo-600' : 'text-gray-700'
-                                        }`}>
-                                            {company.name}
-                                        </p>
-                                        {company.address && (
-                                            <p className="text-xs text-gray-500 mt-0.5 truncate">
-                                                {company.address}
-                                            </p>
+                    <div className="max-h-96 overflow-y-auto">
+                        {companies.length === 0 ? (
+                            <div className="p-4 text-center text-gray-500">
+                                <p className="text-sm">ยังไม่มีองค์กร</p>
+                                <button
+                                    onClick={() => {
+                                        setShowDropdown(false);
+                                        setShowCreateModal(true);
+                                    }}
+                                    className="mt-2 text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                                >
+                                    + สร้างองค์กรใหม่
+                                </button>
+                            </div>
+                        ) : (
+                            companies.map((company) => (
+                                <button
+                                    key={company.id}
+                                    onClick={() => handleSelectCompany(company)}
+                                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                                        currentCompany?.id === company.id ? 'bg-indigo-50' : ''
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className={`font-medium truncate ${
+                                                    currentCompany?.id === company.id ? 'text-indigo-600' : 'text-gray-700'
+                                                }`}>
+                                                    {company.name}
+                                                </p>
+                                                {currentCompany?.id === company.id && (
+                                                    <span className="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                                        เลือกอยู่
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {company.address && (
+                                                <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                                    📍 {company.address}
+                                                </p>
+                                            )}
+                                            <div className="flex items-center gap-3 mt-2">
+                                                <span className="text-xs text-gray-500">
+                                                    👥 {company.memberCount || 0} สมาชิก
+                                                </span>
+                                            </div>
+                                        </div>
+                                        {currentCompany?.id === company.id && (
+                                            <svg className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
                                         )}
                                     </div>
-                                    {currentCompany.id === company.id && (
-                                        <svg className="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                    )}
-                                </div>
-                            </button>
-                        ))}
+                                </button>
+                            ))
+                        )}
                     </div>
 
                     <div className="p-2 border-t border-gray-200">

@@ -34,5 +34,19 @@ export const auth = getAuth(app);           // Firebase Authentication
 export const storage = getStorage(app);     // Firebase Storage
 export const functions = getFunctions(app); // Firebase Cloud Functions
 
+// ตั้งค่า Test Phone Number สำหรับ Development (localhost)
+if (typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    console.log('🔧 Development Mode: เปิดใช้งาน Test Phone Numbers');
+    
+    // ตั้งค่า Test Phone Number และ OTP
+    // เบอร์ทดสอบ: +66910650090, OTP: 123456
+    (auth as any).settings = {
+        appVerificationDisabledForTesting: false, // ยังคงใช้ reCAPTCHA
+    };
+    
+    console.log('📱 Test Phone: +66910650090, OTP: 123456');
+}
+
 // Export app instance สำหรับใช้งานอื่นๆ
 export default app;
