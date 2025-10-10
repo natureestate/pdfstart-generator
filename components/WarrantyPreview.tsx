@@ -29,27 +29,34 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
     return (
         <div ref={ref} className="bg-white shadow-xl w-full aspect-[210/297] overflow-auto flex flex-col" id="printable-area">
-            <div className="p-4 border-4 border-indigo-700 m-2 flex-grow flex flex-col">
+            <div className="p-3 border-2 border-indigo-700 m-1.5 flex-grow flex flex-col">
                 {/* Header Section */}
-                <header className="flex flex-col items-center text-center mb-3 pb-2 border-b-2 border-indigo-300">
-                    <img 
-                        src={displayLogo} 
-                        alt="Company Logo" 
-                        className="max-h-24 mb-2 object-contain"
-                        crossOrigin="anonymous"
-                    />
-                    <h1 className="text-2xl font-bold text-indigo-900 tracking-wide">ใบรับประกันสินค้า</h1>
-                    <h2 className="text-base font-medium text-indigo-600 uppercase tracking-widest">Product Warranty Card</h2>
-                    <div className="mt-1 text-xs text-slate-600 bg-indigo-50 px-3 py-0.5 rounded-full">
-                        เลขที่: <span className="font-bold text-indigo-800">{data.warrantyNumber || '........................'}</span>
+                <header className="relative mb-2 pb-1.5 border-b-2 border-indigo-300">
+                    {/* Logo ที่มุมขวาบน */}
+                    <div className="absolute top-0 right-0">
+                        <img 
+                            src={displayLogo} 
+                            alt="Company Logo" 
+                            className="max-h-20 object-contain"
+                            crossOrigin="anonymous"
+                        />
+                    </div>
+                    
+                    {/* ข้อความส่วนหัว */}
+                    <div className="text-center pt-2">
+                        <h1 className="text-2xl font-bold text-indigo-900 tracking-wide">ใบรับประกันสินค้า</h1>
+                        <h2 className="text-sm font-medium text-indigo-600 uppercase tracking-widest">Product Warranty Card</h2>
+                        <div className="mt-1 text-xs text-slate-600 bg-indigo-50 px-3 py-0.5 rounded-full inline-block">
+                            เลขที่: <span className="font-bold text-indigo-800">{data.warrantyNumber || '........................'}</span>
+                        </div>
                     </div>
                 </header>
 
-                <main className="flex-grow space-y-2.5">
+                <main className="flex-grow space-y-2">
                     {/* ข้อมูลบริษัท */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1.5 text-white bg-indigo-700 px-2 py-1 rounded">📋 ข้อมูลบริษัทผู้ผลิต</h3>
-                        <div className="mt-1 pl-2">
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded">📋 ข้อมูลบริษัทผู้ผลิต</h3>
+                        <div className="mt-0.5 pl-1">
                             <DetailRow label="ชื่อบริษัท" value={data.companyName} />
                             <DetailRow label="ที่อยู่" value={data.companyAddress} isFullWidth={true} />
                             <div className="grid grid-cols-2 gap-2 mt-1">
@@ -67,8 +74,8 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* ข้อมูลลูกค้า */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1.5 text-white bg-indigo-700 px-2 py-1 rounded">👤 ข้อมูลลูกค้า/โครงการ</h3>
-                        <div className="mt-1 pl-2">
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded">👤 ข้อมูลลูกค้า/โครงการ</h3>
+                        <div className="mt-0.5 pl-1">
                             <DetailRow label="ชื่อโครงการ" value={data.projectName} />
                             <DetailRow label="ชื่อลูกค้า" value={data.customerName} />
                             <DetailRow label="โทรศัพท์" value={data.customerPhone} />
@@ -78,8 +85,8 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* ข้อมูลสินค้า */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1.5 text-white bg-indigo-700 px-2 py-1 rounded">📦 ข้อมูลสินค้า/บริการ</h3>
-                        <div className="mt-1 pl-2">
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded">📦 ข้อมูลสินค้า/บริการ</h3>
+                        <div className="mt-0.5 pl-1">
                             <DetailRow label="ประเภทสินค้า" value={data.serviceName} />
                             <DetailRow label="รายการสินค้า" value={data.productDetail} />
                             <div className="grid grid-cols-2 gap-2 mt-1">
@@ -98,8 +105,8 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* การรับประกัน */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1.5 text-white bg-green-700 px-2 py-1 rounded">✅ การรับประกัน</h3>
-                        <div className="mt-1 pl-2">
+                        <h3 className="font-bold text-sm mb-1 text-white bg-green-700 px-2 py-0.5 rounded">✅ การรับประกัน</h3>
+                        <div className="mt-0.5 pl-1">
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="flex py-1 border-b border-slate-200">
                                     <p className="w-2/5 text-xs text-slate-600 font-medium">ระยะเวลา</p>
@@ -115,25 +122,25 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* เงื่อนไขการรับประกัน */}
                     <section className="flex-grow">
-                        <h3 className="font-bold text-sm mb-1.5 text-white bg-indigo-700 px-2 py-1 rounded">📜 เงื่อนไขการรับประกัน</h3>
-                        <div className="text-xs text-slate-700 mt-1 p-2 bg-slate-50 rounded border border-slate-200 leading-relaxed">
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded">📜 เงื่อนไขการรับประกัน</h3>
+                        <div className="text-xs text-slate-700 mt-0.5 p-1.5 bg-slate-50 rounded border border-slate-200 leading-relaxed">
                             <p className="whitespace-pre-wrap">{data.terms || 'ไม่ได้ระบุเงื่อนไข'}</p>
                         </div>
                     </section>
                 </main>
                 
                 {/* Footer Section */}
-                <footer className="mt-2 pt-2 border-t-2 border-indigo-300">
-                    <div className="grid grid-cols-2 gap-3 items-end">
+                <footer className="mt-1.5 pt-1.5 border-t-2 border-indigo-300">
+                    <div className="grid grid-cols-2 gap-2 items-end">
                         <div className="text-xs text-slate-600">
-                            <p className="font-semibold text-xs text-slate-900 mb-0.5">วันที่ออกเอกสาร: {formatDate(data.issueDate)}</p>
+                            <p className="font-semibold text-xs text-slate-900">วันที่ออกเอกสาร: {formatDate(data.issueDate)}</p>
                             <p className="text-xs">ผู้ออกเอกสาร: <span className="font-medium text-slate-900">{data.issuedBy || '........................'}</span></p>
                         </div>
                         <div className="text-center">
-                            <div className="w-32 h-12 border-2 border-dashed border-indigo-400 mx-auto flex items-center justify-center bg-indigo-50">
+                            <div className="w-28 h-10 border-2 border-dashed border-indigo-400 mx-auto flex items-center justify-center bg-indigo-50">
                                 <p className="text-indigo-600 text-xs font-medium">ตราประทับบริษัท</p>
                             </div>
-                            <p className="mt-1 text-indigo-700 text-xs font-medium">ขอขอบคุณที่เลือกใช้สินค้าและบริการของเรา</p>
+                            <p className="mt-0.5 text-indigo-700 text-xs font-medium">ขอขอบคุณที่เลือกใช้สินค้าและบริการของเรา</p>
                         </div>
                     </div>
                 </footer>
