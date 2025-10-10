@@ -47,6 +47,7 @@ const initialWarrantyData: WarrantyData = {
     serviceName: '',
     productDetail: '',
     houseModel: '',
+    batchNo: '',
     purchaseDate: new Date(),
     // การรับประกัน
     warrantyPeriod: '',

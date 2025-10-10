@@ -56,7 +56,8 @@ export interface WarrantyData {
     // ข้อมูลสินค้า/บริการ
     serviceName: string;           // ชื่อบริการ/ประเภทสินค้า
     productDetail: string;         // รายการสินค้า/รายละเอียด
-    houseModel: string;            // แบบบ้าน/หมายเลขล็อต
+    houseModel: string;            // แบบบ้าน
+    batchNo: string;               // หมายเลขการผลิต (Batch No.)
     purchaseDate: Date | null;     // วันที่ส่งมอบ
     
     // การรับประกัน
@@ -75,7 +76,8 @@ export interface ServiceTemplate {
     id?: string;
     serviceName: string;           // ชื่อบริการ/ประเภทสินค้า
     productDetail: string;         // รายการสินค้า/รายละเอียด
-    houseModel: string;            // แบบบ้าน/หมายเลขล็อต
+    houseModel: string;            // แบบบ้าน
+    batchNo: string;               // หมายเลขการผลิต (Batch No.)
     warrantyPeriod: string;        // ระยะเวลารับประกัน
     terms: string;                 // เงื่อนไขการรับประกัน
     userId: string;                // ผู้สร้าง template

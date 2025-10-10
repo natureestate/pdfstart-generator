@@ -21,7 +21,9 @@ const ServiceTemplateSelector: React.FC<ServiceTemplateSelectorProps> = ({ onSel
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [newTemplate, setNewTemplate] = useState({
         serviceName: '',
+        productDetail: '',
         houseModel: '',
+        batchNo: '',
         warrantyPeriod: '',
         terms: ''
     });
@@ -71,8 +73,8 @@ const ServiceTemplateSelector: React.FC<ServiceTemplateSelectorProps> = ({ onSel
     const handleSaveNew = async () => {
         if (!user) return;
         
-        if (!newTemplate.serviceName || !newTemplate.houseModel) {
-            alert('กรุณากรอกชื่อบริการและแบบบ้าน');
+        if (!newTemplate.serviceName || !newTemplate.productDetail) {
+            alert('กรุณากรอกประเภทสินค้าและรายการสินค้า');
             return;
         }
 
@@ -85,7 +87,9 @@ const ServiceTemplateSelector: React.FC<ServiceTemplateSelectorProps> = ({ onSel
             setShowSaveDialog(false);
             setNewTemplate({
                 serviceName: '',
+                productDetail: '',
                 houseModel: '',
+                batchNo: '',
                 warrantyPeriod: '',
                 terms: ''
             });
@@ -126,21 +130,37 @@ const ServiceTemplateSelector: React.FC<ServiceTemplateSelectorProps> = ({ onSel
                     <div className="space-y-2">
                         <input
                             type="text"
-                            placeholder="ชื่อบริการ *"
+                            placeholder="ประเภทสินค้า * (เช่น โครงสร้างสำเร็จระบบ Fully precast)"
                             value={newTemplate.serviceName}
                             onChange={(e) => setNewTemplate(prev => ({ ...prev, serviceName: e.target.value }))}
                             className="block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                         />
                         <input
                             type="text"
-                            placeholder="แบบบ้าน *"
-                            value={newTemplate.houseModel}
-                            onChange={(e) => setNewTemplate(prev => ({ ...prev, houseModel: e.target.value }))}
+                            placeholder="รายการสินค้า * (เช่น โครงสร้างสำเร็จรูป)"
+                            value={newTemplate.productDetail}
+                            onChange={(e) => setNewTemplate(prev => ({ ...prev, productDetail: e.target.value }))}
                             className="block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                         />
+                        <div className="grid grid-cols-2 gap-2">
+                            <input
+                                type="text"
+                                placeholder="แบบบ้าน (เช่น A01)"
+                                value={newTemplate.houseModel}
+                                onChange={(e) => setNewTemplate(prev => ({ ...prev, houseModel: e.target.value }))}
+                                className="block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Batch No."
+                                value={newTemplate.batchNo}
+                                onChange={(e) => setNewTemplate(prev => ({ ...prev, batchNo: e.target.value }))}
+                                className="block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            />
+                        </div>
                         <input
                             type="text"
-                            placeholder="ระยะเวลารับประกัน"
+                            placeholder="ระยะเวลารับประกัน (เช่น 3 ปี)"
                             value={newTemplate.warrantyPeriod}
                             onChange={(e) => setNewTemplate(prev => ({ ...prev, warrantyPeriod: e.target.value }))}
                             className="block w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
