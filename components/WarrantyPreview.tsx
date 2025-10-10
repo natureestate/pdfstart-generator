@@ -55,9 +55,9 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
                 <main className="flex-grow space-y-2">
                     {/* ข้อมูลบริษัท */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded flex items-center gap-1">
-                            <span>📋</span>
-                            <span>ข้อมูลบริษัทผู้ผลิต</span>
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded inline-flex items-center gap-1 w-full">
+                            <span className="leading-none">📋</span>
+                            <span className="leading-none">ข้อมูลบริษัทผู้ผลิต</span>
                         </h3>
                         <div className="mt-0.5 pl-1">
                             <DetailRow label="ชื่อบริษัท" value={data.companyName} />
@@ -77,9 +77,9 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* ข้อมูลลูกค้า */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded flex items-center gap-1">
-                            <span>👤</span>
-                            <span>ข้อมูลลูกค้า/โครงการ</span>
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded inline-flex items-center gap-1 w-full">
+                            <span className="leading-none">👤</span>
+                            <span className="leading-none">ข้อมูลลูกค้า/โครงการ</span>
                         </h3>
                         <div className="mt-0.5 pl-1">
                             <DetailRow label="ชื่อโครงการ" value={data.projectName} />
@@ -91,9 +91,9 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* ข้อมูลสินค้า */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded flex items-center gap-1">
-                            <span>📦</span>
-                            <span>ข้อมูลสินค้า/บริการ</span>
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded inline-flex items-center gap-1 w-full">
+                            <span className="leading-none">📦</span>
+                            <span className="leading-none">ข้อมูลสินค้า/บริการ</span>
                         </h3>
                         <div className="mt-0.5 pl-1">
                             <DetailRow label="ประเภทสินค้า" value={data.serviceName} />
@@ -114,9 +114,9 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* การรับประกัน */}
                     <section>
-                        <h3 className="font-bold text-sm mb-1 text-white bg-green-700 px-2 py-0.5 rounded flex items-center gap-1">
-                            <span>✅</span>
-                            <span>การรับประกัน</span>
+                        <h3 className="font-bold text-sm mb-1 text-white bg-green-700 px-2 py-0.5 rounded inline-flex items-center gap-1 w-full">
+                            <span className="leading-none">✅</span>
+                            <span className="leading-none">การรับประกัน</span>
                         </h3>
                         <div className="mt-0.5 pl-1">
                             <div className="grid grid-cols-2 gap-2">
@@ -134,9 +134,9 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                     {/* เงื่อนไขการรับประกัน */}
                     <section className="flex-grow">
-                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded flex items-center gap-1">
-                            <span>📜</span>
-                            <span>เงื่อนไขการรับประกัน</span>
+                        <h3 className="font-bold text-sm mb-1 text-white bg-indigo-700 px-2 py-0.5 rounded inline-flex items-center gap-1 w-full">
+                            <span className="leading-none">📜</span>
+                            <span className="leading-none">เงื่อนไขการรับประกัน</span>
                         </h3>
                         <div className="text-xs text-slate-700 mt-0.5 p-1.5 bg-slate-50 rounded border border-slate-200 leading-relaxed">
                             <p className="whitespace-pre-wrap">{data.terms || 'ไม่ได้ระบุเงื่อนไข'}</p>
