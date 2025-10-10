@@ -20,9 +20,11 @@ View your app in AI Studio: https://ai.studio/apps/drive/1yhFfep4VwpvqkcV-CVUMEU
 - **☁️ บันทึกข้อมูลลง Cloud**: บันทึกเอกสารและโลโก้ลง Firebase Firestore และ Storage
 - **🔐 ระบบ Authentication**: Login ด้วย Google OAuth และเบอร์โทรศัพท์ (Phone Authentication)
 - **📱 Phone Authentication**: Login ด้วยเบอร์โทรศัพท์และรหัส OTP ผ่าน SMS
-- **👤 แยกข้อมูลตาม User**: แต่ละคนเห็นเฉพาะข้อมูลของตัวเอง
+- **🏢 Multi-Company Management**: จัดการหลายบริษัทในบัญชีเดียว แยกข้อมูลตามบริษัท
+- **👤 แยกข้อมูลตาม User และ Company**: แต่ละคนเห็นเฉพาะข้อมูลของตัวเอง กรองตามบริษัทที่เลือก
 - **🛡️ reCAPTCHA v3**: ป้องกัน bot และ automated attacks ด้วย Google reCAPTCHA v3
 - **✅ Firebase App Check**: ป้องกัน unauthorized clients ด้วย App Check enforcement
+- **🔢 Auto Document Number**: สร้างเลขที่เอกสารอัตโนมัติในรูปแบบ prefix-YYMMDDXX (เช่น DN-25101001)
 
 ## โครงสร้างโปรเจค
 
@@ -40,13 +42,17 @@ View your app in AI Studio: https://ai.studio/apps/drive/1yhFfep4VwpvqkcV-CVUMEU
 │   ├── CompanyProfileSelector.tsx  # เลือกข้อมูลบริษัท
 │   └── HistoryList.tsx          # ประวัติเอกสาร
 ├── contexts/            # 🆕 React Contexts
-│   └── AuthContext.tsx          # Auth Context Provider
+│   ├── AuthContext.tsx          # Auth Context Provider
+│   └── CompanyContext.tsx       # 🆕 Company Context Provider
 ├── services/
 │   ├── pdfGenerator.ts          # บริการสร้าง PDF
 │   ├── firestore.ts             # Firestore CRUD
 │   ├── logoStorage.ts           # Firebase Storage สำหรับโลโก้
 │   ├── auth.ts                  # 🆕 Authentication Service
-│   └── companyProfiles.ts       # จัดการข้อมูลบริษัท
+│   ├── companies.ts             # 🆕 Company Management Service
+│   ├── companyProfiles.ts       # จัดการข้อมูลบริษัท
+│   ├── documentNumber.ts        # 🆕 Auto Document Number Service
+│   └── recaptcha.ts             # reCAPTCHA Service
 ├── utils/
 │   └── dateUtils.ts             # ยูทิลิตี้สำหรับจัดการวันที่
 ├── constants/
@@ -222,3 +228,15 @@ npm run kill-port  # ถ้าต้องการหยุดอย่าง�
   - ป้องกัน unauthorized clients
   - วิธีตั้งค่าใน Firebase Console
   - Troubleshooting
+
+- **[MULTI_COMPANY_GUIDE.md](MULTI_COMPANY_GUIDE.md)** - คู่มือระบบ Multi-Company Management 🆕
+  - จัดการหลายบริษัทในบัญชีเดียว
+  - แยกข้อมูลตามบริษัทที่เลือก
+  - Company Selector และการสร้างบริษัทใหม่
+  - API Reference และการพัฒนาเพิ่มเติม
+
+- **[AUTO_DOCUMENT_NUMBER_GUIDE.md](AUTO_DOCUMENT_NUMBER_GUIDE.md)** - คู่มือระบบ Auto-Generate เลขที่เอกสาร 🆕
+  - สร้างเลขที่เอกสารอัตโนมัติในรูปแบบ prefix-YYMMDDXX
+  - Running number ที่แยกตาม User และรีเซ็ตทุกวัน
+  - ป้องกันการซ้ำกันด้วย Firebase Transaction
+  - การปรับแต่ง Prefix และการใช้งานขั้นสูง

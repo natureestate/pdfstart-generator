@@ -1,5 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { DeliveryNoteData, WarrantyData } from './types';
+import { DeliveryNoteData, WarrantyData, LogoType } from './types';
+import { AuthProvider } from './contexts/AuthContext';
+import { CompanyProvider, useCompany } from './contexts/CompanyContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/Header';
 import DeliveryForm from './components/DeliveryForm';
 import DocumentPreview from './components/DocumentPreview';
@@ -10,13 +13,13 @@ import { generatePdf } from './services/pdfGenerator';
 import { saveDeliveryNote, saveWarrantyCard } from './services/firestore';
 import type { DeliveryNoteDocument, WarrantyDocument } from './services/firestore';
 
-const initialDeliveryData: DeliveryNoteData = {
+const getInitialDeliveryData = (): DeliveryNoteData => ({
     logo: null,
     fromCompany: '',
     fromAddress: '',
     toCompany: '',
     toAddress: '',
-    docNumber: `DN-${new Date().getFullYear()}-001`,
+    docNumber: '', // จะถูก auto-generate ใน DeliveryForm
     date: new Date(),
     project: '',
     items: [
@@ -24,7 +27,9 @@ const initialDeliveryData: DeliveryNoteData = {
     ],
     senderName: '',
     receiverName: '',
-};
+});
+
+const initialDeliveryData = getInitialDeliveryData();
 
 const initialWarrantyData: WarrantyData = {
     logo: null,
@@ -43,7 +48,9 @@ type DocType = 'delivery' | 'warranty';
 type ViewMode = 'form' | 'history';
 type Notification = { show: boolean; message: string; type: 'success' | 'info' | 'error' };
 
-const App: React.FC = () => {
+// Main Content Component ที่ใช้ useCompany hook
+const AppContent: React.FC = () => {
+    const { currentCompany } = useCompany(); // ใช้ CompanyContext
     const [deliveryData, setDeliveryData] = useState<DeliveryNoteData>(initialDeliveryData);
     const [warrantyData, setWarrantyData] = useState<WarrantyData>(initialWarrantyData);
     const [activeTab, setActiveTab] = useState<DocType>('delivery');
@@ -52,6 +59,27 @@ const App: React.FC = () => {
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [notification, setNotification] = useState<Notification>({ show: false, message: '', type: 'info' });
     const printableAreaRef = useRef<HTMLDivElement>(null);
+    
+    // Shared Logo State - ใช้ร่วมกันระหว่างทั้ง 2 แท็บ
+    const [sharedLogo, setSharedLogo] = useState<string | null>(null);
+    const [sharedLogoUrl, setSharedLogoUrl] = useState<string | null>(null);
+    const [sharedLogoType, setSharedLogoType] = useState<LogoType>('default');
+    
+    // Sync shared logo กับ delivery และ warranty data
+    useEffect(() => {
+        setDeliveryData(prev => ({
+            ...prev,
+            logo: sharedLogo,
+            logoUrl: sharedLogoUrl,
+            logoType: sharedLogoType,
+        }));
+        setWarrantyData(prev => ({
+            ...prev,
+            logo: sharedLogo,
+            logoUrl: sharedLogoUrl,
+            logoType: sharedLogoType,
+        }));
+    }, [sharedLogo, sharedLogoUrl, sharedLogoType]);
     
     useEffect(() => {
         if (notification.show) {
@@ -66,17 +94,19 @@ const App: React.FC = () => {
         setNotification({ show: true, message, type });
     };
 
-    // ฟังก์ชันบันทึกข้อมูลลง Firestore
+    // ฟังก์ชันบันทึกข้อมูลลง Firestore พร้อม companyId
     const handleSaveToFirestore = useCallback(async () => {
         setIsSaving(true);
         showToast('กำลังบันทึกข้อมูล...', 'info');
 
         try {
+            const companyId = currentCompany?.id; // ดึง companyId จาก context
+            
             if (activeTab === 'delivery') {
-                const id = await saveDeliveryNote(deliveryData);
+                const id = await saveDeliveryNote(deliveryData, companyId);
                 showToast(`บันทึกใบส่งมอบงานสำเร็จ (ID: ${id})`, 'success');
             } else {
-                const id = await saveWarrantyCard(warrantyData);
+                const id = await saveWarrantyCard(warrantyData, companyId);
                 showToast(`บันทึกใบรับประกันสำเร็จ (ID: ${id})`, 'success');
             }
         } catch (error) {
@@ -85,7 +115,7 @@ const App: React.FC = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [activeTab, deliveryData, warrantyData]);
+    }, [activeTab, deliveryData, warrantyData, currentCompany]);
 
     // ฟังก์ชัน Export PDF
     const handleExportPdf = useCallback(async () => {
@@ -129,6 +159,29 @@ const App: React.FC = () => {
         setViewMode('form');
         showToast('โหลดเอกสารสำเร็จ', 'success');
     }, []);
+
+    // ฟังก์ชันสร้างฟอร์มใหม่
+    const handleCreateNewForm = useCallback(() => {
+        if (activeTab === 'delivery') {
+            setDeliveryData(getInitialDeliveryData());
+        } else {
+            setWarrantyData({
+                logo: sharedLogo,
+                logoUrl: sharedLogoUrl,
+                logoType: sharedLogoType,
+                companyName: '',
+                companyAddress: '',
+                customerName: '',
+                customerContact: '',
+                productName: '',
+                serialNumber: '',
+                purchaseDate: new Date(),
+                warrantyPeriod: '',
+                terms: ''
+            });
+        }
+        showToast('สร้างฟอร์มใหม่สำเร็จ', 'success');
+    }, [activeTab, sharedLogo, sharedLogoUrl, sharedLogoType]);
     
     const notificationColors = {
         info: 'bg-blue-500',
@@ -196,11 +249,27 @@ const App: React.FC = () => {
                                 <DeliveryForm
                                     data={deliveryData}
                                     setData={setDeliveryData}
+                                    sharedLogo={sharedLogo}
+                                    sharedLogoUrl={sharedLogoUrl}
+                                    sharedLogoType={sharedLogoType}
+                                    onLogoChange={(logo, logoUrl, logoType) => {
+                                        setSharedLogo(logo);
+                                        setSharedLogoUrl(logoUrl);
+                                        setSharedLogoType(logoType);
+                                    }}
                                 />
                             ) : (
                                 <WarrantyForm
                                     data={warrantyData}
                                     setData={setWarrantyData}
+                                    sharedLogo={sharedLogo}
+                                    sharedLogoUrl={sharedLogoUrl}
+                                    sharedLogoType={sharedLogoType}
+                                    onLogoChange={(logo, logoUrl, logoType) => {
+                                        setSharedLogo(logo);
+                                        setSharedLogoUrl(logoUrl);
+                                        setSharedLogoType(logoType);
+                                    }}
                                 />
                             )}
                         </div>
@@ -210,7 +279,17 @@ const App: React.FC = () => {
                             <div className="sticky top-8">
                                 <div className="flex justify-between items-center mb-4 gap-2">
                                     <h2 className="text-xl font-semibold text-slate-700">ตัวอย่างเอกสาร</h2>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateNewForm}
+                                            className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                            </svg>
+                                            ฟอร์มใหม่
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={handleSaveToFirestore}
@@ -270,6 +349,19 @@ const App: React.FC = () => {
                 )}
             </main>
         </div>
+    );
+};
+
+// Main App Component with Providers
+const App: React.FC = () => {
+    return (
+        <AuthProvider>
+            <CompanyProvider>
+                <ProtectedRoute>
+                    <AppContent />
+                </ProtectedRoute>
+            </CompanyProvider>
+        </AuthProvider>
     );
 };
 

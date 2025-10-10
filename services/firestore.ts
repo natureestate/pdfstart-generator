@@ -16,7 +16,7 @@ import {
     Timestamp,
     QueryConstraint
 } from "firebase/firestore";
-import { db } from "../firebase.config";
+import { db, auth } from "../firebase.config";
 import { DeliveryNoteData, WarrantyData } from "../types";
 
 // Collection names
@@ -67,18 +67,33 @@ export interface WarrantyDocument extends WarrantyData, FirestoreDocument {}
 
 /**
  * บันทึกใบส่งมอบงานใหม่ลง Firestore
+ * @param data - ข้อมูลใบส่งมอบงาน
+ * @param companyId - ID ของบริษัท (optional)
  */
-export const saveDeliveryNote = async (data: DeliveryNoteData): Promise<string> => {
+export const saveDeliveryNote = async (data: DeliveryNoteData, companyId?: string): Promise<string> => {
     try {
+        // ตรวจสอบว่า user login แล้วหรือยัง
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error("กรุณา Login ก่อนบันทึกข้อมูล");
+        }
+        
         // สร้าง Document ID ที่อ่านง่าย
         const docId = generateDeliveryNoteId(data.docNumber);
         const docRef = doc(db, DELIVERY_NOTES_COLLECTION, docId);
         
-        await setDoc(docRef, {
+        // เตรียมข้อมูลสำหรับบันทึก - ไม่บันทึก Base64 ถ้ามี logoUrl
+        const dataToSave = {
             ...data,
+            // ถ้ามี logoUrl (อัปโหลดไปยัง Storage แล้ว) ให้ลบ Base64 ออก
+            logo: data.logoUrl ? null : data.logo,
+            userId: currentUser.uid, // เพิ่ม userId
+            companyId: companyId || null, // เพิ่ม companyId
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
-        });
+        };
+        
+        await setDoc(docRef, dataToSave);
         
         return docId;
     } catch (error) {
@@ -113,15 +128,32 @@ export const getDeliveryNote = async (id: string): Promise<DeliveryNoteDocument 
 };
 
 /**
- * ดึงรายการใบส่งมอบงานทั้งหมด (มีการ limit)
+ * ดึงรายการใบส่งมอบงานทั้งหมด (มีการ limit) - เฉพาะของ user และ company ที่เลือก
+ * @param limitCount - จำนวนเอกสารที่ต้องการดึง
+ * @param companyId - ID ของบริษัท (optional) ถ้าไม่ระบุจะดึงทั้งหมด
  */
-export const getDeliveryNotes = async (limitCount: number = 50): Promise<DeliveryNoteDocument[]> => {
+export const getDeliveryNotes = async (limitCount: number = 50, companyId?: string): Promise<DeliveryNoteDocument[]> => {
     try {
-        const q = query(
-            collection(db, DELIVERY_NOTES_COLLECTION),
-            orderBy("createdAt", "desc"),
-            limit(limitCount)
-        );
+        // ตรวจสอบว่า user login แล้วหรือยัง
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error("กรุณา Login ก่อนดูข้อมูล");
+        }
+        
+        // สร้าง query constraints
+        const constraints: QueryConstraint[] = [
+            where("userId", "==", currentUser.uid), // กรองเฉพาะของ user นี้
+        ];
+        
+        // ถ้ามี companyId ให้กรองเฉพาะบริษัทนั้น
+        if (companyId) {
+            constraints.push(where("companyId", "==", companyId));
+        }
+        
+        constraints.push(orderBy("createdAt", "desc"));
+        constraints.push(limit(limitCount));
+        
+        const q = query(collection(db, DELIVERY_NOTES_COLLECTION), ...constraints);
         
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => {
@@ -200,18 +232,33 @@ export const searchDeliveryNoteByDocNumber = async (docNumber: string): Promise<
 
 /**
  * บันทึกใบรับประกันสินค้าใหม่ลง Firestore
+ * @param data - ข้อมูลใบรับประกัน
+ * @param companyId - ID ของบริษัท (optional)
  */
-export const saveWarrantyCard = async (data: WarrantyData): Promise<string> => {
+export const saveWarrantyCard = async (data: WarrantyData, companyId?: string): Promise<string> => {
     try {
+        // ตรวจสอบว่า user login แล้วหรือยัง
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error("กรุณา Login ก่อนบันทึกข้อมูล");
+        }
+        
         // สร้าง Document ID ที่อ่านง่าย
         const docId = generateWarrantyCardId(data.serialNumber);
         const docRef = doc(db, WARRANTY_CARDS_COLLECTION, docId);
         
-        await setDoc(docRef, {
+        // เตรียมข้อมูลสำหรับบันทึก - ไม่บันทึก Base64 ถ้ามี logoUrl
+        const dataToSave = {
             ...data,
+            // ถ้ามี logoUrl (อัปโหลดไปยัง Storage แล้ว) ให้ลบ Base64 ออก
+            logo: data.logoUrl ? null : data.logo,
+            userId: currentUser.uid, // เพิ่ม userId
+            companyId: companyId || null, // เพิ่ม companyId
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
-        });
+        };
+        
+        await setDoc(docRef, dataToSave);
         
         return docId;
     } catch (error) {
@@ -246,15 +293,32 @@ export const getWarrantyCard = async (id: string): Promise<WarrantyDocument | nu
 };
 
 /**
- * ดึงรายการใบรับประกันสินค้าทั้งหมด (มีการ limit)
+ * ดึงรายการใบรับประกันสินค้าทั้งหมด (มีการ limit) - เฉพาะของ user และ company ที่เลือก
+ * @param limitCount - จำนวนเอกสารที่ต้องการดึง
+ * @param companyId - ID ของบริษัท (optional) ถ้าไม่ระบุจะดึงทั้งหมด
  */
-export const getWarrantyCards = async (limitCount: number = 50): Promise<WarrantyDocument[]> => {
+export const getWarrantyCards = async (limitCount: number = 50, companyId?: string): Promise<WarrantyDocument[]> => {
     try {
-        const q = query(
-            collection(db, WARRANTY_CARDS_COLLECTION),
-            orderBy("createdAt", "desc"),
-            limit(limitCount)
-        );
+        // ตรวจสอบว่า user login แล้วหรือยัง
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error("กรุณา Login ก่อนดูข้อมูล");
+        }
+        
+        // สร้าง query constraints
+        const constraints: QueryConstraint[] = [
+            where("userId", "==", currentUser.uid), // กรองเฉพาะของ user นี้
+        ];
+        
+        // ถ้ามี companyId ให้กรองเฉพาะบริษัทนั้น
+        if (companyId) {
+            constraints.push(where("companyId", "==", companyId));
+        }
+        
+        constraints.push(orderBy("createdAt", "desc"));
+        constraints.push(limit(limitCount));
+        
+        const q = query(collection(db, WARRANTY_CARDS_COLLECTION), ...constraints);
         
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => {

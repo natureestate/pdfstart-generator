@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { WarrantyData } from '../types';
+import { getDefaultLogoUrl } from '../services/logoStorage';
 
 interface WarrantyPreviewProps {
     data: WarrantyData;
@@ -22,17 +23,19 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
         </div>
     );
 
+    // กำหนดโลโก้ที่จะแสดง - ใช้ logoUrl (จาก Storage) หรือ logo (Base64) หรือ default
+    const displayLogo = data.logoUrl || data.logo || getDefaultLogoUrl();
+
     return (
         <div ref={ref} className="bg-white shadow-lg w-full aspect-[210/297] overflow-auto text-sm flex flex-col" id="printable-area">
             <div className="p-8 md:p-10 border-4 border-slate-800 m-4 flex-grow flex flex-col">
                 <header className="flex flex-col items-center text-center mb-6 pb-4 border-b-2 border-slate-300">
-                    {data.logo ? (
-                        <img src={data.logo} alt="Company Logo" className="max-h-20 mb-3 object-contain" />
-                    ) : (
-                        <div className="w-24 h-12 bg-slate-200 flex items-center justify-center text-slate-400 text-xs mb-2 rounded">
-                            LOGO
-                        </div>
-                    )}
+                    <img 
+                        src={displayLogo} 
+                        alt="Company Logo" 
+                        className="max-h-20 mb-3 object-contain"
+                        crossOrigin="anonymous"
+                    />
                     <h1 className="text-2xl font-bold text-slate-800 tracking-wider">ใบรับประกันสินค้า</h1>
                     <h2 className="text-lg font-medium text-slate-500 uppercase tracking-widest">Warranty Card</h2>
                 </header>

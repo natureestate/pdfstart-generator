@@ -1,10 +1,17 @@
-import React, { useRef, useState } from 'react';
-import { DeliveryNoteData, WorkItem } from '../types';
+import React, { useRef, useState, useEffect } from 'react';
+import { DeliveryNoteData, WorkItem, LogoType } from '../types';
 import { formatDateForInput } from '../utils/dateUtils';
+import LogoManager from './LogoManager';
+import CompanyProfileSelector from './CompanyProfileSelector';
+import { generateDocumentNumber } from '../services/documentNumber';
 
-interface DeliveryFormProps {
+export interface DeliveryFormProps {
     data: DeliveryNoteData;
     setData: React.Dispatch<React.SetStateAction<DeliveryNoteData>>;
+    sharedLogo?: string | null;
+    sharedLogoUrl?: string | null;
+    sharedLogoType?: LogoType;
+    onLogoChange?: (logo: string | null, logoUrl: string | null, logoType: LogoType) => void;
 }
 
 const FormDivider: React.FC<{ title: string }> = ({ title }) => (
@@ -18,10 +25,18 @@ const FormDivider: React.FC<{ title: string }> = ({ title }) => (
     </div>
 );
 
-const DeliveryForm: React.FC<DeliveryFormProps> = ({ data, setData }) => {
+const DeliveryForm: React.FC<DeliveryFormProps> = ({ 
+    data, 
+    setData,
+    sharedLogo,
+    sharedLogoUrl,
+    sharedLogoType,
+    onLogoChange
+}) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [itemToRemove, setItemToRemove] = useState<number | null>(null);
+    const [isGeneratingDocNumber, setIsGeneratingDocNumber] = useState(false);
 
     const handleDataChange = <K extends keyof DeliveryNoteData,>(key: K, value: DeliveryNoteData[K]) => {
         setData(prev => ({ ...prev, [key]: value }));
@@ -55,23 +70,52 @@ const DeliveryForm: React.FC<DeliveryFormProps> = ({ data, setData }) => {
         setIsConfirmModalOpen(true);
     };
 
-    const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                handleDataChange('logo', reader.result as string);
-            };
-            reader.readAsDataURL(file);
+    /**
+     * จัดการการเปลี่ยนแปลงโลโก้จาก LogoManager component
+     */
+    const handleLogoChange = (logo: string | null, logoUrl: string | null, logoType: LogoType) => {
+        // ใช้ onLogoChange ถ้ามี (Shared Logo) มิฉะนั้นใช้ setData (แบบเดิม)
+        if (onLogoChange) {
+            onLogoChange(logo, logoUrl, logoType);
+        } else {
+            setData(prev => ({
+                ...prev,
+                logo,
+                logoUrl,
+                logoType,
+            }));
         }
     };
 
-    const removeLogo = () => {
-        handleDataChange('logo', null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+    /**
+     * สร้างเลขที่เอกสารอัตโนมัติ
+     */
+    const handleGenerateDocNumber = async () => {
+        setIsGeneratingDocNumber(true);
+        try {
+            const newDocNumber = await generateDocumentNumber('delivery');
+            handleDataChange('docNumber', newDocNumber);
+        } catch (error) {
+            console.error('Error generating document number:', error);
+            alert('ไม่สามารถสร้างเลขที่เอกสารได้ กรุณาลองใหม่อีกครั้ง');
+        } finally {
+            setIsGeneratingDocNumber(false);
         }
     };
+
+    /**
+     * Auto-generate เลขที่เอกสารเมื่อฟอร์มว่างหรือเป็นค่า default
+     */
+    useEffect(() => {
+        // ตรวจสอบว่าเลขที่เอกสารเป็นค่า default หรือว่าง
+        const isDefaultOrEmpty = !data.docNumber || 
+                                  data.docNumber.match(/^DN-\d{4}-\d{3}$/) || // รูปแบบเก่า: DN-2025-001
+                                  data.docNumber === '';
+        
+        if (isDefaultOrEmpty && !isGeneratingDocNumber) {
+            handleGenerateDocNumber();
+        }
+    }, []); // เรียกครั้งเดียวตอน mount
     
     return (
         <div className="space-y-8 pt-4">
@@ -114,39 +158,28 @@ const DeliveryForm: React.FC<DeliveryFormProps> = ({ data, setData }) => {
             <div className="space-y-6">
                 <FormDivider title="ข้อมูลผู้ส่งมอบ" />
                 <div className="space-y-4">
-                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">โลโก้บริษัท</label>
-                        <input
-                            type="file"
-                            accept="image/png, image/jpeg, image/svg+xml"
-                            ref={fileInputRef}
-                            onChange={handleLogoUpload}
-                            className="hidden"
-                            id="logo-upload"
-                        />
-                        {!data.logo ? (
-                            <div
-                                className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
-                                onClick={() => fileInputRef.current?.click()}
-                            >
-                                <svg className="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                <p className="mt-2 text-sm text-slate-500">คลิกเพื่ออัปโหลดโลโก้</p>
-                                <small className="text-xs text-slate-400">PNG, JPG, SVG</small>
-                            </div>
-                        ) : (
-                            <div className="relative w-40 h-40 border rounded-lg p-2 flex items-center justify-center bg-slate-50">
-                                <img src={data.logo} alt="logo preview" className="max-w-full max-h-full object-contain" />
-                                <div className="absolute top-1 right-1 flex flex-col gap-1">
-                                     <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-blue-500 text-white rounded-full shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z"></path></svg>
-                                    </button>
-                                    <button type="button" onClick={removeLogo} className="p-1.5 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                     {/* ใช้ LogoManager component แทนการจัดการโลโก้เอง */}
+                     <LogoManager
+                        currentLogo={sharedLogo !== undefined ? sharedLogo : data.logo}
+                        logoUrl={sharedLogoUrl !== undefined ? sharedLogoUrl : data.logoUrl}
+                        logoType={sharedLogoType || data.logoType || 'default'}
+                        onChange={handleLogoChange}
+                        showLabel={true}
+                        label="โลโก้บริษัท"
+                     />
+
+                    {/* Company Profile Selector สำหรับผู้ส่ง */}
+                    <CompanyProfileSelector
+                        type="sender"
+                        label="เลือกข้อมูลผู้ส่ง"
+                        currentCompany={data.fromCompany}
+                        currentAddress={data.fromAddress}
+                        onSelect={(profile) => {
+                            handleDataChange('fromCompany', profile.companyName);
+                            handleDataChange('fromAddress', profile.address);
+                        }}
+                    />
+
                     <div>
                         <label htmlFor="fromCompany" className="block text-sm font-medium text-slate-700">ชื่อบริษัท/ผู้ส่ง</label>
                         <input type="text" id="fromCompany" value={data.fromCompany} onChange={(e) => handleDataChange('fromCompany', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
@@ -159,6 +192,18 @@ const DeliveryForm: React.FC<DeliveryFormProps> = ({ data, setData }) => {
 
                 <FormDivider title="ข้อมูลผู้รับมอบ" />
                 <div className="space-y-4">
+                    {/* Company Profile Selector สำหรับผู้รับ */}
+                    <CompanyProfileSelector
+                        type="receiver"
+                        label="เลือกข้อมูลผู้รับ"
+                        currentCompany={data.toCompany}
+                        currentAddress={data.toAddress}
+                        onSelect={(profile) => {
+                            handleDataChange('toCompany', profile.companyName);
+                            handleDataChange('toAddress', profile.address);
+                        }}
+                    />
+
                     <div>
                         <label htmlFor="toCompany" className="block text-sm font-medium text-slate-700">ชื่อบริษัท/ผู้รับ</label>
                         <input type="text" id="toCompany" value={data.toCompany} onChange={(e) => handleDataChange('toCompany', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
@@ -173,7 +218,40 @@ const DeliveryForm: React.FC<DeliveryFormProps> = ({ data, setData }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="docNumber" className="block text-sm font-medium text-slate-700">เลขที่เอกสาร</label>
-                        <input type="text" id="docNumber" value={data.docNumber} onChange={(e) => handleDataChange('docNumber', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
+                        <div className="mt-1 flex gap-2">
+                            <input 
+                                type="text" 
+                                id="docNumber" 
+                                value={data.docNumber} 
+                                onChange={(e) => handleDataChange('docNumber', e.target.value)} 
+                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" 
+                                placeholder="DN-25101001"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleGenerateDocNumber}
+                                disabled={isGeneratingDocNumber}
+                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                                {isGeneratingDocNumber ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        สร้าง...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                        </svg>
+                                        Auto
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">รูปแบบ: DN-YYMMDDXX (เช่น DN-25101001)</p>
                     </div>
                     <div>
                         <label htmlFor="date" className="block text-sm font-medium text-slate-700">วันที่</label>

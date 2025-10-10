@@ -5,6 +5,8 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -19,10 +21,18 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Initialize App Check with reCAPTCHA v3
+// ใช้ site key เดียวกับ reCAPTCHA
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('6Lc_6t4rAAAAAChtA-8Cpl-2p2fSjm3_wlDyAuEj'),
+  isTokenAutoRefreshEnabled: true // Auto-refresh token
+});
+
 // Initialize Firebase services
 export const db = getFirestore(app);        // Firestore Database
 export const auth = getAuth(app);           // Firebase Authentication
 export const storage = getStorage(app);     // Firebase Storage
+export const functions = getFunctions(app); // Firebase Cloud Functions
 
 // Export app instance สำหรับใช้งานอื่นๆ
 export default app;

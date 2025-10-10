@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getDeliveryNotes, getWarrantyCards, deleteDeliveryNote, deleteWarrantyCard } from '../services/firestore';
 import type { DeliveryNoteDocument, WarrantyDocument } from '../services/firestore';
+import { useCompany } from '../contexts/CompanyContext';
 
 interface HistoryListProps {
     activeDocType: 'delivery' | 'warranty';
@@ -8,23 +9,26 @@ interface HistoryListProps {
 }
 
 const HistoryList: React.FC<HistoryListProps> = ({ activeDocType, onLoadDocument }) => {
+    const { currentCompany } = useCompany(); // ใช้ CompanyContext
     const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNoteDocument[]>([]);
     const [warrantyCards, setWarrantyCards] = useState<WarrantyDocument[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'delivery' | 'warranty', id: string } | null>(null);
 
-    // โหลดข้อมูลจาก Firestore
+    // โหลดข้อมูลจาก Firestore กรองตาม companyId
     const fetchData = async () => {
         setLoading(true);
         setError(null);
         
         try {
+            const companyId = currentCompany?.id; // ดึง companyId จาก context
+            
             if (activeDocType === 'delivery') {
-                const notes = await getDeliveryNotes(50);
+                const notes = await getDeliveryNotes(50, companyId);
                 setDeliveryNotes(notes);
             } else {
-                const cards = await getWarrantyCards(50);
+                const cards = await getWarrantyCards(50, companyId);
                 setWarrantyCards(cards);
             }
         } catch (err) {
@@ -37,7 +41,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ activeDocType, onLoadDocument
 
     useEffect(() => {
         fetchData();
-    }, [activeDocType]);
+    }, [activeDocType, currentCompany]); // เพิ่ม currentCompany เป็น dependency
 
     // ฟังก์ชันลบเอกสาร
     const handleDelete = async (type: 'delivery' | 'warranty', id: string) => {

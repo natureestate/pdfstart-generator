@@ -2,24 +2,85 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ฟังก์ชันตรวจสอบว่าผู้ใช้ Login แล้วหรือยัง
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // ฟังก์ชันตรวจสอบว่าเป็นเจ้าของเอกสารหรือไม่
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
     // ใบส่งมอบงาน (Delivery Notes)
     match /deliveryNotes/{documentId} {
-      // อนุญาตให้อ่านได้ทุกคน (สำหรับ demo)
-      // ในระบบจริงควรเพิ่ม authentication
-      allow read: if true;
+      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้วและเป็นเจ้าของเอกสาร
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
       
-      // อนุญาตให้เขียนได้ทุกคน (สำหรับ demo)
-      // ในระบบจริงควรตรวจสอบ authentication และ validation
-      allow write: if true;
+      // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้แก้ไขและลบได้เฉพาะเจ้าของเอกสาร
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
     }
     
     // ใบรับประกันสินค้า (Warranty Cards)
     match /warrantyCards/{documentId} {
-      // อนุญาตให้อ่านได้ทุกคน (สำหรับ demo)
-      allow read: if true;
+      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้วและเป็นเจ้าของเอกสาร
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
       
-      // อนุญาตให้เขียนได้ทุกคน (สำหรับ demo)
-      allow write: if true;
+      // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้แก้ไขและลบได้เฉพาะเจ้าของเอกสาร
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+    
+    // Company Profiles (ข้อมูลบริษัทที่บันทึกไว้)
+    match /companyProfiles/{profileId} {
+      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้วและเป็นเจ้าของ profile
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      
+      // อนุญาตให้สร้าง profile ใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้แก้ไขและลบได้เฉพาะเจ้าของ profile
+      allow update, delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+    
+    // Companies (ข้อมูลบริษัทสำหรับระบบ Multi-Company)
+    match /companies/{companyId} {
+      // อนุญาตให้ทุกคนที่ Login แล้วอ่านบริษัททั้งหมดได้
+      allow read: if isAuthenticated();
+      
+      // อนุญาตให้สร้างบริษัทใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้ทุกคนแก้ไขได้
+      allow update: if isAuthenticated();
+      
+      // อนุญาตให้ลบได้เฉพาะ Admin (คนที่สร้างบริษัท)
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+    
+    // Document Numbers (เลขที่เอกสารอัตโนมัติ - Running Number)
+    match /documentNumbers/{counterId} {
+      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้ว และ counterId ต้องขึ้นต้นด้วย userId ของตัวเอง
+      // รูปแบบ counterId: {userId}_{prefix}_{date}
+      allow read: if isAuthenticated() && counterId.matches('^' + request.auth.uid + '_.*');
+      
+      // อนุญาตให้สร้าง counter ใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี userId ตรงกับผู้ใช้
+      allow create: if isAuthenticated() 
+                    && request.resource.data.userId == request.auth.uid
+                    && counterId.matches('^' + request.auth.uid + '_.*');
+      
+      // อนุญาตให้แก้ไข counter ได้เฉพาะเจ้าของ (ตรวจสอบจาก counterId และ userId ใน data)
+      allow update: if isAuthenticated() 
+                    && counterId.matches('^' + request.auth.uid + '_.*')
+                    && resource.data.userId == request.auth.uid;
+      
+      // ไม่อนุญาตให้ลบ counter (เพื่อรักษาความสมบูรณ์ของข้อมูล)
+      allow delete: if false;
     }
     
     // Default: ปฏิเสธทุก collection อื่นๆ

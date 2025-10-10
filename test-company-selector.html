@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Company Selector</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8 text-gray-800">🏢 Company Selector - Preview</h1>
+        
+        <!-- Header Preview -->
+        <div class="bg-white shadow-md rounded-lg p-4 mb-8">
+            <div class="flex items-center justify-between">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white text-xl">📄</span>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-800">เครื่องมือสร้างเอกสาร</h1>
+                </div>
+
+                <!-- Company Selector + User Menu -->
+                <div class="flex items-center gap-4">
+                    <!-- Company Selector -->
+                    <div class="relative">
+                        <button 
+                            onclick="toggleCompanyDropdown()"
+                            class="flex items-center gap-2 px-4 py-2 bg-white border-2 border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                            </svg>
+                            <span class="font-medium">บริษัทของฉัน</span>
+                            <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">Default</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown -->
+                        <div id="companyDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200">
+                                <h3 class="text-sm font-semibold text-gray-700 mb-2">เลือกบริษัท</h3>
+                                <p class="text-xs text-gray-500">เปลี่ยนบริษัทที่กำลังทำงานอยู่</p>
+                            </div>
+
+                            <!-- Company List -->
+                            <div class="max-h-64 overflow-y-auto">
+                                <!-- Company 1 (Default) -->
+                                <button class="w-full px-4 py-3 hover:bg-indigo-50 text-left border-b border-gray-100 transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                                <span class="text-indigo-600 text-lg">🏢</span>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="font-medium text-gray-800">บริษัทของฉัน</span>
+                                                    <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">Default</span>
+                                                </div>
+                                                <p class="text-xs text-gray-500">123 ถนนสุขุมวิท กรุงเทพฯ</p>
+                                            </div>
+                                        </div>
+                                        <svg class="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                </button>
+
+                                <!-- Company 2 -->
+                                <button class="w-full px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                                <span class="text-gray-600 text-lg">🏭</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-gray-800">บริษัท ABC จำกัด</span>
+                                                <p class="text-xs text-gray-500">456 ถนนพระราม 4</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <!-- Company 3 -->
+                                <button class="w-full px-4 py-3 hover:bg-gray-50 text-left transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                                                <span class="text-gray-600 text-lg">🏪</span>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-gray-800">ร้าน XYZ</span>
+                                                <p class="text-xs text-gray-500">789 ถนนสีลม</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <!-- Create New Company Button -->
+                            <div class="p-3 border-t border-gray-200">
+                                <button 
+                                    onclick="alert('เปิด Modal สร้างบริษัทใหม่')"
+                                    class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    <span class="font-medium">สร้างบริษัทใหม่</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="flex items-center gap-3 pl-4 border-l-2 border-gray-200">
+                        <img src="https://ui-avatars.com/api/?name=Test+User&background=4F46E5&color=fff" 
+                             alt="User" 
+                             class="w-10 h-10 rounded-full">
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">Test User</p>
+                            <p class="text-xs text-gray-500">test@example.com</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+            <h2 class="text-lg font-semibold text-blue-800 mb-2">📌 วิธีดู Company Selector</h2>
+            <ol class="list-decimal list-inside space-y-2 text-blue-700">
+                <li>คลิกที่ปุ่ม "บริษัทของฉัน" เพื่อเปิด dropdown</li>
+                <li>จะเห็นรายการบริษัททั้งหมด</li>
+                <li>บริษัทที่เลือกอยู่จะมีเครื่องหมายถูก ✓</li>
+                <li>บริษัท Default จะมี badge สีเหลือง</li>
+                <li>คลิก "สร้างบริษัทใหม่" เพื่อเพิ่มบริษัท</li>
+            </ol>
+        </div>
+
+        <!-- Note -->
+        <div class="mt-8 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded">
+            <h2 class="text-lg font-semibold text-yellow-800 mb-2">⚠️ หมายเหตุ</h2>
+            <p class="text-yellow-700">
+                ใน production จริง Company Selector จะแสดงเฉพาะเมื่อ <strong>Login แล้วเท่านั้น</strong>
+                <br>หน้านี้เป็นเพียง Preview เพื่อให้เห็นภาพรวมของ UI
+            </p>
+        </div>
+
+        <!-- How to see in real app -->
+        <div class="mt-8 bg-green-50 border-l-4 border-green-500 p-4 rounded">
+            <h2 class="text-lg font-semibold text-green-800 mb-2">✅ วิธีดูในแอปจริง</h2>
+            <ol class="list-decimal list-inside space-y-2 text-green-700">
+                <li>เปิด <code class="bg-white px-2 py-1 rounded">http://localhost:3000</code></li>
+                <li><strong>Login</strong> ด้วย Google หรือเบอร์โทรศัพท์</li>
+                <li>หลัง Login สำเร็จ จะเห็น Company Selector ที่ Header</li>
+                <li>ระบบจะสร้างบริษัท "บริษัทของฉัน" ให้อัตโนมัติ</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function toggleCompanyDropdown() {
+            const dropdown = document.getElementById('companyDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('companyDropdown');
+            const button = event.target.closest('button');
+            
+            if (!button || !button.onclick || button.onclick.toString().indexOf('toggleCompanyDropdown') === -1) {
+                if (!dropdown.contains(event.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
