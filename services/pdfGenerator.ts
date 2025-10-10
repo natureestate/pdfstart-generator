@@ -255,21 +255,14 @@ export const generatePdf = async (element: HTMLElement, filename: string): Promi
 
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = pdf.internal.pageSize.getHeight();
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-        const ratio = canvasWidth / canvasHeight;
-
-        let imgWidth = pdfWidth;
-        let imgHeight = imgWidth / ratio;
         
-        // if image height is larger than page height, scale down
-        if (imgHeight > pdfHeight) {
-            imgHeight = pdfHeight;
-            imgWidth = imgHeight * ratio;
-        }
-
-        const x = (pdfWidth - imgWidth) / 2;
-        const y = (pdfHeight - imgHeight) / 2;
+        // ✅ Fixed: ใช้ความกว้างเต็ม A4 (210mm) และความสูงเต็ม A4 (297mm)
+        const imgWidth = pdfWidth;
+        const imgHeight = pdfHeight;
+        
+        // ไม่ center แล้ว ให้เริ่มจากมุมบนซ้ายเลย
+        const x = 0;
+        const y = 0;
         
         console.log(`Adding image to PDF: ${imgWidth}x${imgHeight} at (${x}, ${y})`);
         

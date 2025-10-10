@@ -328,14 +328,14 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="warrantyEndDate" className="block text-sm font-medium text-slate-700">วันสิ้นสุดการรับประกัน</label>
-                            <input 
-                                type="date" 
-                                id="warrantyEndDate" 
-                                value={formatDateForInput(data.warrantyEndDate)} 
-                                onChange={(e) => handleDataChange('warrantyEndDate', e.target.value ? new Date(e.target.value) : null)} 
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" 
-                            />
-                            <p className="mt-1 text-xs text-gray-500">💡 จะคำนวณอัตโนมัติจากวันส่งมอบ + ระยะเวลารับประกัน</p>
+                            <div className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-100 text-sm text-slate-700">
+                                {data.warrantyEndDate ? new Intl.DateTimeFormat('th-TH', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                }).format(data.warrantyEndDate) : 'ยังไม่ได้คำนวณ'}
+                            </div>
+                            <p className="mt-1 text-xs text-green-600">✅ คำนวณอัตโนมัติจากวันส่งมอบ + ระยะเวลารับประกัน (ไม่สามารถแก้ไขได้)</p>
                         </div>
                         <div>
                             <label htmlFor="issueDate" className="block text-sm font-medium text-slate-700">วันที่ออกเอกสาร</label>
