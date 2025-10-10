@@ -16,8 +16,9 @@ const DocumentPreview = forwardRef<HTMLDivElement, DocumentPreviewProps>(({ data
         }).format(date);
     };
 
-    // กำหนดโลโก้ที่จะแสดง - ใช้ logoUrl (จาก Storage) หรือ logo (Base64) หรือ default
-    const displayLogo = data.logoUrl || data.logo || getDefaultLogoUrl();
+    // ✅ กำหนดโลโก้ที่จะแสดง - ใช้ logo (Base64) ก่อนเพื่อหลีกเลี่ยงปัญหา CORS
+    // ถ้าไม่มี Base64 ให้ใช้ logoUrl แต่อาจมีปัญหา CORS
+    const displayLogo = data.logo || data.logoUrl || getDefaultLogoUrl();
 
     return (
         <div ref={ref} className="bg-white shadow-lg p-8 md:p-12 w-full aspect-[210/297] overflow-auto text-sm" id="printable-area">
