@@ -395,4 +395,3 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
 };
 
 export default WarrantyForm;
-export default WarrantyForm;
