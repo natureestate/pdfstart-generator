@@ -33,15 +33,29 @@ const initialDeliveryData = getInitialDeliveryData();
 
 const initialWarrantyData: WarrantyData = {
     logo: null,
+    // ข้อมูลบริษัท
     companyName: '',
     companyAddress: '',
+    companyPhone: '',
+    companyEmail: '',
+    // ข้อมูลลูกค้า/โครงการ
+    projectName: '',
     customerName: '',
-    customerContact: '',
-    productName: '',
-    serialNumber: '',
+    customerPhone: '',
+    customerAddress: '',
+    // ข้อมูลสินค้า/บริการ
+    serviceName: '',
+    productDetail: '',
+    houseModel: '',
     purchaseDate: new Date(),
+    // การรับประกัน
     warrantyPeriod: '',
-    terms: ''
+    warrantyEndDate: null,
+    terms: '',
+    // ข้อมูลเอกสาร
+    warrantyNumber: '',
+    issueDate: new Date(),
+    issuedBy: ''
 };
 
 type DocType = 'delivery' | 'warranty';

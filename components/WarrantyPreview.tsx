@@ -43,13 +43,13 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
 
                 <main className="flex-grow">
                     <section className="mb-6">
-                        <h3 className="font-bold text-base mb-2 text-indigo-700 border-b border-indigo-200 pb-1">ข้อมูลลูกค้าและผลิตภัณฑ์</h3>
+                        <h3 className="font-bold text-base mb-2 text-indigo-700 border-b border-indigo-200 pb-1">ข้อมูลลูกค้าและบริการ</h3>
                         <div className="mt-3">
                             <DetailRow label="ชื่อลูกค้า" value={data.customerName} />
                             <DetailRow label="ข้อมูลติดต่อ" value={data.customerContact} />
-                            <DetailRow label="ชื่อสินค้า/รุ่น" value={data.productName} />
-                            <DetailRow label="หมายเลขเครื่อง" value={data.serialNumber} />
                             <DetailRow label="วันที่ซื้อ" value={formatDate(data.purchaseDate)} />
+                            <DetailRow label="ชื่อบริการ" value={data.serviceName} />
+                            <DetailRow label="แบบบ้าน" value={data.houseModel} />
                             <DetailRow label="ระยะเวลารับประกัน" value={data.warrantyPeriod} />
                         </div>
                     </section>

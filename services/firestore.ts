@@ -40,17 +40,17 @@ const generateDeliveryNoteId = (docNumber: string): string => {
 
 /**
  * สร้าง Document ID ที่อ่านง่าย สำหรับใบรับประกันสินค้า
- * รูปแบบ: YYMMDD_SN-XXXX (เช่น 250930_SN-2025-TEST-001)
+ * รูปแบบ: YYMMDD_MODEL-XXXX (เช่น 251010_A01)
  */
-const generateWarrantyCardId = (serialNumber: string): string => {
+const generateWarrantyCardId = (houseModel: string): string => {
     const now = new Date();
     const yy = String(now.getFullYear()).slice(-2);
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     const dd = String(now.getDate()).padStart(2, '0');
     
-    // ลบ "SN-" ออกจาก serialNumber ถ้ามี แล้วใส่กลับในรูปแบบที่ต้องการ
-    const cleanSerialNumber = serialNumber.replace(/^SN-/i, '');
-    return `${yy}${mm}${dd}_SN-${cleanSerialNumber}`;
+    // ทำความสะอาด houseModel (ลบอักขระพิเศษออก)
+    const cleanModel = houseModel.replace(/[^a-zA-Z0-9]/g, '');
+    return `${yy}${mm}${dd}_${cleanModel}`;
 };
 
 // Interface สำหรับเอกสารที่บันทึกใน Firestore
@@ -244,7 +244,7 @@ export const saveWarrantyCard = async (data: WarrantyData, companyId?: string): 
         }
         
         // สร้าง Document ID ที่อ่านง่าย
-        const docId = generateWarrantyCardId(data.serialNumber);
+        const docId = generateWarrantyCardId(data.houseModel);
         const docRef = doc(db, WARRANTY_CARDS_COLLECTION, docId);
         
         // เตรียมข้อมูลสำหรับบันทึก - ไม่บันทึก Base64 ถ้ามี logoUrl
@@ -367,13 +367,13 @@ export const deleteWarrantyCard = async (id: string): Promise<void> => {
 };
 
 /**
- * ค้นหาใบรับประกันสินค้าตามหมายเลขเครื่อง
+ * ค้นหาใบรับประกันสินค้าตามแบบบ้าน
  */
-export const searchWarrantyCardBySerialNumber = async (serialNumber: string): Promise<WarrantyDocument[]> => {
+export const searchWarrantyCardByHouseModel = async (houseModel: string): Promise<WarrantyDocument[]> => {
     try {
         const q = query(
             collection(db, WARRANTY_CARDS_COLLECTION),
-            where("serialNumber", "==", serialNumber)
+            where("houseModel", "==", houseModel)
         );
         
         const querySnapshot = await getDocs(q);
@@ -392,3 +392,6 @@ export const searchWarrantyCardBySerialNumber = async (serialNumber: string): Pr
         throw new Error("ไม่สามารถค้นหาใบรับประกันสินค้าได้");
     }
 };
+
+// Export ชื่อเดิมเพื่อ backward compatibility
+export const searchWarrantyCardBySerialNumber = searchWarrantyCardByHouseModel;

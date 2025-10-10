@@ -3,6 +3,7 @@ import { WarrantyData, LogoType } from '../types';
 import { formatDateForInput } from '../utils/dateUtils';
 import LogoManager from './LogoManager';
 import CompanyProfileSelector from './CompanyProfileSelector';
+import ServiceTemplateSelector from './ServiceTemplateSelector';
 import { generateDocumentNumber } from '../services/documentNumber';
 
 export interface WarrantyFormProps {
@@ -36,6 +37,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showCompanySelector, setShowCompanySelector] = useState(false);
     const [showCustomerSelector, setShowCustomerSelector] = useState(false);
+    const [showServiceSelector, setShowServiceSelector] = useState(false);
     const [isGeneratingSerialNumber, setIsGeneratingSerialNumber] = useState(false);
 
     const handleDataChange = <K extends keyof WarrantyData,>(key: K, value: WarrantyData[K]) => {
@@ -60,30 +62,30 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
     };
 
     /**
-     * สร้างหมายเลขเครื่อง/เลขที่เอกสารอัตโนมัติ
+     * สร้างหมายเลขเอกสารอัตโนมัติ
      */
-    const handleGenerateSerialNumber = async () => {
+    const handleGenerateDocNumber = async () => {
         setIsGeneratingSerialNumber(true);
         try {
-            const newSerialNumber = await generateDocumentNumber('warranty');
-            handleDataChange('serialNumber', newSerialNumber);
+            const newDocNumber = await generateDocumentNumber('warranty');
+            handleDataChange('houseModel', newDocNumber);
         } catch (error) {
-            console.error('Error generating serial number:', error);
-            alert('ไม่สามารถสร้างหมายเลขเครื่องได้ กรุณาลองใหม่อีกครั้ง');
+            console.error('Error generating document number:', error);
+            alert('ไม่สามารถสร้างเลขที่เอกสารได้ กรุณาลองใหม่อีกครั้ง');
         } finally {
             setIsGeneratingSerialNumber(false);
         }
     };
 
     /**
-     * Auto-generate หมายเลขเครื่องเมื่อฟอร์มว่าง
+     * Auto-generate เลขที่เอกสารเมื่อฟอร์มว่าง (ถ้าต้องการ)
      */
     useEffect(() => {
-        // ตรวจสอบว่าหมายเลขเครื่องว่าง
-        if (!data.serialNumber || data.serialNumber === '' && !isGeneratingSerialNumber) {
-            handleGenerateSerialNumber();
-        }
-    }, []); // เรียกครั้งเดียวตอน mount
+        // เอาออก - ให้ผู้ใช้กรอกเองหรือเลือกจาก template
+        // if (!data.houseModel || data.houseModel === '' && !isGeneratingSerialNumber) {
+        //     handleGenerateDocNumber();
+        // }
+    }, []);
 
     return (
         <div className="space-y-8 pt-4">
@@ -134,7 +136,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
                     </div>
                 </div>
             
-                <FormDivider title="ข้อมูลลูกค้าและสินค้า" />
+                <FormDivider title="ข้อมูลลูกค้า" />
                 <div className="space-y-4">
                     {/* Customer Profile Selector สำหรับข้อมูลลูกค้า */}
                     <div>
@@ -170,54 +172,72 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
                             <input type="text" id="customerContact" value={data.customerContact} onChange={(e) => handleDataChange('customerContact', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
                         </div>
                     </div>
-                    <div className="md:col-span-2">
-                        <label htmlFor="productName" className="block text-sm font-medium text-slate-700">ชื่อสินค้า/รุ่น</label>
-                        <input type="text" id="productName" value={data.productName} onChange={(e) => handleDataChange('productName', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
-                    </div>
-                    <div>
-                        <label htmlFor="serialNumber" className="block text-sm font-medium text-slate-700">หมายเลขเครื่อง</label>
-                        <div className="mt-1 flex gap-2">
-                            <input 
-                                type="text" 
-                                id="serialNumber" 
-                                value={data.serialNumber} 
-                                onChange={(e) => handleDataChange('serialNumber', e.target.value)} 
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" 
-                                placeholder="WR-25101001"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleGenerateSerialNumber}
-                                disabled={isGeneratingSerialNumber}
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
-                            >
-                                {isGeneratingSerialNumber ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        สร้าง...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="-ml-0.5 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                                        </svg>
-                                        Auto
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                        <p className="mt-1 text-xs text-gray-500">รูปแบบ: WR-YYMMDDXX (เช่น WR-25101001)</p>
-                    </div>
                     <div>
                         <label htmlFor="purchaseDate" className="block text-sm font-medium text-slate-700">วันที่ซื้อ</label>
                         <input type="date" id="purchaseDate" value={formatDateForInput(data.purchaseDate)} onChange={(e) => handleDataChange('purchaseDate', e.target.value ? new Date(e.target.value) : null)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
                     </div>
-                    <div className="md:col-span-2">
+                </div>
+
+                <FormDivider title="ข้อมูลสินค้า/บริการ" />
+                <div className="space-y-4">
+                    {/* Service Template Selector */}
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-slate-700">ข้อมูลสินค้า/บริการ</label>
+                            <button
+                                type="button"
+                                onClick={() => setShowServiceSelector(!showServiceSelector)}
+                                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                            >
+                                {showServiceSelector ? 'ซ่อน' : 'เลือกจากที่บันทึกไว้'}
+                            </button>
+                        </div>
+                        {showServiceSelector && (
+                            <ServiceTemplateSelector
+                                onSelect={(template) => {
+                                    handleDataChange('serviceName', template.serviceName);
+                                    handleDataChange('houseModel', template.houseModel);
+                                    handleDataChange('warrantyPeriod', template.warrantyPeriod);
+                                    handleDataChange('terms', template.terms);
+                                    setShowServiceSelector(false);
+                                }}
+                            />
+                        )}
+                    </div>
+
+                    <div>
+                        <label htmlFor="serviceName" className="block text-sm font-medium text-slate-700">ชื่อบริการ</label>
+                        <input 
+                            type="text" 
+                            id="serviceName" 
+                            value={data.serviceName} 
+                            onChange={(e) => handleDataChange('serviceName', e.target.value)} 
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" 
+                            placeholder="เช่น บ้านพักอาศัยโครงสร้างพรีคาสท์สำเร็จรูป"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="houseModel" className="block text-sm font-medium text-slate-700">แบบบ้าน</label>
+                        <input 
+                            type="text" 
+                            id="houseModel" 
+                            value={data.houseModel} 
+                            onChange={(e) => handleDataChange('houseModel', e.target.value)} 
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" 
+                            placeholder="เช่น A01, B02, Modern Loft"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">ระบุแบบบ้านหรือรุ่นของสินค้า</p>
+                    </div>
+                    <div>
                         <label htmlFor="warrantyPeriod" className="block text-sm font-medium text-slate-700">ระยะเวลารับประกัน</label>
-                        <input type="text" id="warrantyPeriod" value={data.warrantyPeriod} onChange={(e) => handleDataChange('warrantyPeriod', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
+                        <input 
+                            type="text" 
+                            id="warrantyPeriod" 
+                            value={data.warrantyPeriod} 
+                            onChange={(e) => handleDataChange('warrantyPeriod', e.target.value)} 
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" 
+                            placeholder="เช่น 1 ปี, 2 ปี, 5 ปี"
+                        />
                     </div>
                 </div>
 

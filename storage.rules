@@ -17,23 +17,21 @@ service firebase.storage {
       return request.resource.size < 2 * 1024 * 1024; // 2MB
     }
     
-    // โลโก้ของผู้ใช้
-    match /logos/{userId}/{fileName} {
-      // อนุญาตให้อ่านได้ทุกคน (เพื่อให้แสดงโลโก้ใน PDF ได้)
+    // โลโก้ทั้งหมด (path: logos/{fileName})
+    match /logos/{fileName} {
+      // อนุญาตให้อ่านได้ทุกคน (สำหรับแสดงโลโก้ใน PDF และ Gallery)
       allow read: if true;
       
-      // อนุญาตให้อัปโหลดได้เฉพาะเจ้าของ และต้องเป็นรูปภาพ ขนาดไม่เกิน 2MB
+      // อนุญาตให้อัปโหลดได้เฉพาะผู้ใช้ที่ Login แล้ว และต้องเป็นรูปภาพ ขนาดไม่เกิน 2MB
       allow create: if isAuthenticated() 
-                    && request.auth.uid == userId 
                     && isImage() 
                     && isValidSize();
       
-      // อนุญาตให้ลบได้เฉพาะเจ้าของ
-      allow delete: if isAuthenticated() && request.auth.uid == userId;
+      // อนุญาตให้ลบได้เฉพาะผู้ใช้ที่ Login แล้ว
+      allow delete: if isAuthenticated();
       
-      // อนุญาตให้แก้ไข/เขียนทับได้เฉพาะเจ้าของ และต้องเป็นรูปภาพ ขนาดไม่เกิน 2MB
+      // อนุญาตให้แก้ไข/เขียนทับได้เฉพาะผู้ใช้ที่ Login แล้ว และต้องเป็นรูปภาพ ขนาดไม่เกิน 2MB
       allow update: if isAuthenticated() 
-                    && request.auth.uid == userId 
                     && isImage() 
                     && isValidSize();
     }

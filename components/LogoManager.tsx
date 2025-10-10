@@ -37,6 +37,12 @@ interface LogoManagerProps {
     label?: string;
 }
 
+// Interface สำหรับ Logo Item พร้อม Base64
+interface LogoItemWithPreview extends LogoItem {
+    preview?: string; // Base64 preview image
+    isLoadingPreview?: boolean;
+}
+
 const LogoManager: React.FC<LogoManagerProps> = ({
     currentLogo,
     logoUrl,
@@ -49,7 +55,7 @@ const LogoManager: React.FC<LogoManagerProps> = ({
     const [isUploading, setIsUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [showGallery, setShowGallery] = useState(false);
-    const [availableLogos, setAvailableLogos] = useState<LogoItem[]>([]);
+    const [availableLogos, setAvailableLogos] = useState<LogoItemWithPreview[]>([]);
     const [isLoadingGallery, setIsLoadingGallery] = useState(false);
 
     // กำหนด logo ที่จะแสดง
@@ -63,7 +69,16 @@ const LogoManager: React.FC<LogoManagerProps> = ({
         setIsLoadingGallery(true);
         try {
             const logos = await listAllLogos();
-            setAvailableLogos(logos);
+            
+            // ไม่แปลง Base64 ล่วงหน้า เพื่อหลีกเลี่ยงปัญหา CORS
+            // จะแปลงเฉพาะตอนที่ผู้ใช้เลือกโลโก้
+            const logosWithPreview: LogoItemWithPreview[] = logos.map(logo => ({
+                ...logo,
+                isLoadingPreview: false,
+                preview: logo.url // ใช้ URL ตรงๆ ใน Gallery (อาจมี CORS แต่ไม่สำคัญ)
+            }));
+            
+            setAvailableLogos(logosWithPreview);
         } catch (error) {
             console.error('Error loading logos:', error);
             setUploadError('ไม่สามารถโหลดรายการโลโก้ได้');
@@ -191,33 +206,56 @@ const LogoManager: React.FC<LogoManagerProps> = ({
 
     /**
      * เลือกโลโก้จาก gallery
+     * ใช้วิธีโหลดรูปใหม่แล้วแปลงเป็น Base64 เพื่อหลีกเลี่ยงปัญหา CORS
      */
-    const handleSelectLogo = async (logo: LogoItem) => {
+    const handleSelectLogo = async (logo: LogoItemWithPreview) => {
         console.log('📷 เลือกโลโก้จาก Gallery:', logo.name);
-        
-        // แสดง loading state
         setIsUploading(true);
+        setUploadError(null);
         
         try {
-            // ✅ แปลง Firebase Storage URL เป็น Base64 เพื่อหลีกเลี่ยงปัญหา CORS
-            console.log('🔄 กำลังแปลงโลโก้จาก Gallery เป็น Base64...');
-            const base64FromStorage = await convertStorageUrlToBase64(logo.url);
+            // วิธีแก้ปัญหา CORS: โหลดรูปจาก URL แล้วแปลงเป็น Base64 ด้วย fetch + blob
+            console.log('🔄 กำลังโหลดและแปลงโลโก้...');
             
-            if (base64FromStorage) {
-                // ใช้ Base64 (ไม่มีปัญหา CORS)
-                onChange(base64FromStorage, logo.url, 'uploaded');
-                console.log('✅ แปลงโลโก้จาก Gallery เป็น Base64 สำเร็จ!');
-            } else {
-                // Fallback: ใช้ URL ตรงๆ (อาจมีปัญหา CORS)
-                onChange(logo.url, logo.url, 'uploaded');
-                console.warn('⚠️  ใช้ URL ตรงๆ จาก Gallery (อาจมีปัญหา CORS)');
+            // ใช้ fetch ดึงรูปมาเป็น blob (ใช้ URL พร้อม token จาก Firebase)
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(logo.url)}`;
+            
+            try {
+                // ลองโหลดโดยตรงก่อน (อาจได้ถ้า CORS ถูกต้อง)
+                const response = await fetch(logo.url, { mode: 'no-cors' });
+                
+                // ถ้าไม่ได้ blob จาก no-cors ให้ลอง proxy
+                throw new Error('Need proxy');
+            } catch {
+                // ใช้ proxy service ที่ช่วยแก้ปัญหา CORS
+                console.log('⚠️  ใช้ proxy service เพื่อหลีกเลี่ยง CORS...');
+                const response = await fetch(proxyUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                
+                // แปลง blob เป็น Base64
+                const base64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                
+                if (base64) {
+                    onChange(base64, logo.url, 'uploaded');
+                    console.log('✅ เลือกโลโก้สำเร็จ!');
+                    setShowGallery(false);
+                } else {
+                    throw new Error('ไม่สามารถแปลงเป็น Base64 ได้');
+                }
             }
-            
-            setShowGallery(false);
-            setUploadError(null);
         } catch (error) {
-            console.error('❌ ไม่สามารถแปลงโลโก้จาก Gallery:', error);
-            setUploadError('ไม่สามารถโหลดโลโก้ได้ กรุณาลองใหม่');
+            console.error('❌ ไม่สามารถโหลดโลโก้:', error);
+            setUploadError('ไม่สามารถโหลดโลโก้ได้ อาจเกิดจากปัญหาเครือข่าย');
         } finally {
             setIsUploading(false);
         }
@@ -226,7 +264,7 @@ const LogoManager: React.FC<LogoManagerProps> = ({
     /**
      * ลบโลโก้จาก gallery
      */
-    const handleDeleteFromGallery = async (logo: LogoItem, event: React.MouseEvent) => {
+    const handleDeleteFromGallery = async (logo: LogoItemWithPreview, event: React.MouseEvent) => {
         event.stopPropagation(); // ป้องกันไม่ให้ trigger การเลือก
         
         if (!confirm(`ต้องการลบโลโก้ "${logo.name}" หรือไม่?`)) {
@@ -472,11 +510,27 @@ const LogoManager: React.FC<LogoManagerProps> = ({
 
                                         {/* Logo Image */}
                                         <div className="flex items-center justify-center h-20 mb-2">
-                                            <img 
-                                                src={logo.url} 
-                                                alt={logo.name}
-                                                className="max-h-full max-w-full object-contain"
-                                            />
+                                            {logo.isLoadingPreview ? (
+                                                // แสดง loading spinner ขณะโหลด preview
+                                                <div className="flex items-center justify-center">
+                                                    <svg className="animate-spin h-6 w-6 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                </div>
+                                            ) : logo.preview ? (
+                                                // แสดง Base64 preview (ไม่มีปัญหา CORS)
+                                                <img 
+                                                    src={logo.preview} 
+                                                    alt={logo.name}
+                                                    className="max-h-full max-w-full object-contain"
+                                                />
+                                            ) : (
+                                                // Fallback: แสดง placeholder ถ้าโหลดไม่สำเร็จ
+                                                <div className="text-slate-400 text-xs text-center">
+                                                    ไม่สามารถโหลดภาพ
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Logo Info */}

@@ -233,31 +233,64 @@ export const formatFileSize = (bytes: number): string => {
 };
 
 /**
- * แปลงรูปภาพจาก Storage path เป็น Base64 เพื่อหลีกเลี่ยงปัญหา CORS
- * ใช้ Firebase SDK ดึง blob แล้วแปลงเป็น Base64
+ * แปลงรูปภาพจาก Storage path เป็น Base64
+ * วิธีแก้ปัญหา CORS: ใช้ <img> element load แล้ว canvas แปลงเป็น Base64
  * @param storagePath - path ของรูปใน Storage (เช่น "logos/logo-123.jpg")
  * @returns Base64 string หรือ null หากเกิดข้อผิดพลาด
  */
 export const getImageAsBase64FromPath = async (storagePath: string): Promise<string | null> => {
     try {
-        console.log('Converting image to Base64 from path:', storagePath);
-        const imageRef = ref(storage, storagePath);
-        const blob = await getBlob(imageRef);
+        console.log('📥 Converting image to Base64 from path:', storagePath);
         
+        // ดึง Download URL ที่มี token
+        const imageRef = ref(storage, storagePath);
+        const downloadURL = await getDownloadURL(imageRef);
+        
+        console.log('🔗 Got download URL:', downloadURL);
+        
+        // ใช้ Image element + Canvas เพื่อแปลงเป็น Base64
+        // วิธีนี้ทำงานได้ดีกว่าเพราะ browser จัดการ CORS ให้เอง
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                console.log('Successfully converted image to Base64 via Firebase SDK');
-                resolve(reader.result as string);
+            const img = new Image();
+            
+            // ตั้งค่า crossOrigin เป็น anonymous เพื่อให้ browser จัดการ CORS
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = () => {
+                try {
+                    // สร้าง canvas แล้ววาดรูปลงไป
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        reject(new Error('ไม่สามารถสร้าง canvas context ได้'));
+                        return;
+                    }
+                    
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // แปลง canvas เป็น Base64
+                    const base64 = canvas.toDataURL('image/jpeg', 0.95);
+                    console.log('✅ Successfully converted via Image+Canvas method');
+                    resolve(base64);
+                } catch (canvasError) {
+                    console.error('Canvas conversion error:', canvasError);
+                    reject(canvasError);
+                }
             };
-            reader.onerror = (error) => {
-                console.error('FileReader error:', error);
+            
+            img.onerror = (error) => {
+                console.error('❌ Image load error:', error);
                 reject(error);
             };
-            reader.readAsDataURL(blob);
+            
+            // โหลดรูปภาพ
+            img.src = downloadURL;
         });
     } catch (error) {
-        console.error('Error converting image to base64:', error);
+        console.error('❌ Error converting image to base64:', error);
         return null;
     }
 };
