@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCompany } from '../contexts/CompanyContext';
-import { signOut, getLinkedProviders, linkWithEmailPassword, changePassword } from '../services/auth';
+import { signOut, getLinkedProviders, linkWithEmailPassword, changePassword, sendPasswordReset } from '../services/auth';
 import CompanySelector from './CompanySelector';
 import UserManagement from './UserManagement';
 import { checkIsAdmin } from '../services/companyMembers';
@@ -30,6 +30,9 @@ const Header: React.FC = () => {
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
     const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+    
+    // Reset Password
+    const [showResetPasswordLink, setShowResetPasswordLink] = useState(false);
 
     // ตรวจสอบว่ามี Password หรือไม่
     useEffect(() => {
@@ -174,6 +177,24 @@ const Header: React.FC = () => {
             setChangePasswordError(err.message || 'ไม่สามารถเปลี่ยนรหัสผ่านได้');
         } finally {
             setChangePasswordLoading(false);
+        }
+    };
+
+    /**
+     * ส่งอีเมลรีเซ็ตรหัสผ่าน
+     */
+    const handleSendResetEmail = async () => {
+        if (!user?.email) {
+            alert('❌ ไม่พบอีเมลของผู้ใช้');
+            return;
+        }
+
+        try {
+            await sendPasswordReset(user.email);
+            alert(`✅ ส่งอีเมลรีเซ็ตรหัสผ่านไปที่ ${user.email} แล้ว\n\nกรุณาตรวจสอบอีเมลของคุณ`);
+            setShowChangePasswordModal(false);
+        } catch (err: any) {
+            alert(`❌ ${err.message || 'ไม่สามารถส่งอีเมลได้'}`);
         }
     };
 
@@ -752,6 +773,17 @@ const Header: React.FC = () => {
                                         <p className="text-sm text-red-600">{changePasswordError}</p>
                                     </div>
                                 )}
+
+                                {/* ลืมรหัสผ่าน? */}
+                                <div className="text-center">
+                                    <button
+                                        type="button"
+                                        onClick={handleSendResetEmail}
+                                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                        🔗 ลืมรหัสผ่าน? ส่งอีเมลรีเซ็ต
+                                    </button>
+                                </div>
 
                                 {/* Submit Button */}
                                 <button

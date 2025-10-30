@@ -178,6 +178,13 @@ const AppContent: React.FC = () => {
 
     // ฟังก์ชันโหลดเอกสารจาก History
     const handleLoadDocument = useCallback((doc: DeliveryNoteDocument | WarrantyDocument) => {
+        // โหลด logo จากเอกสาร
+        if (doc.logoUrl || doc.logo) {
+            setSharedLogo(doc.logo || null);
+            setSharedLogoUrl(doc.logoUrl || null);
+            setSharedLogoType(doc.logoType || 'default');
+        }
+
         if ('project' in doc) {
             // เป็น DeliveryNoteDocument
             setDeliveryData({

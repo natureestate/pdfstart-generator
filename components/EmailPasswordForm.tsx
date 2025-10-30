@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from 'react';
-import { signInWithEmailPassword, signUpWithEmailPassword, checkEmailProviders } from '../services/auth';
+import { signInWithEmailPassword, signUpWithEmailPassword, checkEmailProviders, sendPasswordReset } from '../services/auth';
 import { AccountLinkingModal } from './AccountLinkingModal';
 
 interface EmailPasswordFormProps {
@@ -24,6 +24,10 @@ export const EmailPasswordForm: React.FC<EmailPasswordFormProps> = ({ onSuccess 
     // Account Linking Modal
     const [showLinkingModal, setShowLinkingModal] = useState(false);
     const [existingProviders, setExistingProviders] = useState<string[]>([]);
+    
+    // Forgot Password
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
 
     /**
      * จัดการ Login
@@ -132,6 +136,25 @@ export const EmailPasswordForm: React.FC<EmailPasswordFormProps> = ({ onSuccess 
         setConfirmPassword('');
     };
 
+    /**
+     * ส่งอีเมลรีเซ็ตรหัสผ่าน
+     */
+    const handleForgotPassword = async () => {
+        if (!resetEmail) {
+            alert('❌ กรุณากรอกอีเมล');
+            return;
+        }
+
+        try {
+            await sendPasswordReset(resetEmail);
+            alert(`✅ ส่งอีเมลรีเซ็ตรหัสผ่านไปที่ ${resetEmail} แล้ว\n\nกรุณาตรวจสอบอีเมลของคุณ`);
+            setShowForgotPassword(false);
+            setResetEmail('');
+        } catch (err: any) {
+            alert(`❌ ${err.message || 'ไม่สามารถส่งอีเมลได้'}`);
+        }
+    };
+
     return (
         <div className="w-full max-w-md mx-auto">
             {/* Tab สลับโหมด */}
@@ -231,6 +254,22 @@ export const EmailPasswordForm: React.FC<EmailPasswordFormProps> = ({ onSuccess 
                     </div>
                 )}
 
+                {/* ลืมรหัสผ่าน? (แสดงเฉพาะโหมด Login) */}
+                {mode === 'login' && (
+                    <div className="text-center">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setResetEmail(email);
+                                setShowForgotPassword(true);
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 underline"
+                        >
+                            🔗 ลืมรหัสผ่าน?
+                        </button>
+                    </div>
+                )}
+
                 {/* Submit Button */}
                 <button
                     type="submit"
@@ -311,6 +350,73 @@ export const EmailPasswordForm: React.FC<EmailPasswordFormProps> = ({ onSuccess 
                 existingProviders={existingProviders}
                 currentProvider="email"
             />
+
+            {/* Forgot Password Modal */}
+            {showForgotPassword && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold text-gray-800">
+                                🔑 ลืมรหัสผ่าน
+                            </h3>
+                            <button
+                                onClick={() => {
+                                    setShowForgotPassword(false);
+                                    setResetEmail('');
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="space-y-4">
+                            {/* ข้อความแจ้งเตือน */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p className="text-sm text-blue-800">
+                                    กรอกอีเมลของคุณ เราจะส่งลิงก์รีเซ็ตรหัสผ่านให้คุณ
+                                </p>
+                            </div>
+
+                            {/* Email Input */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    อีเมล
+                                </label>
+                                <input
+                                    type="email"
+                                    value={resetEmail}
+                                    onChange={(e) => setResetEmail(e.target.value)}
+                                    placeholder="example@email.com"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                                onClick={handleForgotPassword}
+                                className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transition-all"
+                            >
+                                📧 ส่งอีเมลรีเซ็ตรหัสผ่าน
+                            </button>
+
+                            {/* ข้อมูลเพิ่มเติม */}
+                            <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs text-gray-600">
+                                    💡 <strong>หมายเหตุ</strong>
+                                    <br />
+                                    หลังจากได้รับอีเมล ให้คลิกลิงก์เพื่อตั้งรหัสผ่านใหม่
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
