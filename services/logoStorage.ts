@@ -153,9 +153,15 @@ export const isDefaultLogo = (logoUrl: string | null): boolean => {
 
 /**
  * ดึง default logo URL
- * @returns URL ของ default logo
+ * @param companyDefaultLogoUrl - URL ของ default logo ที่กำหนดไว้ในองค์กร (optional)
+ * @returns URL ของ default logo (ใช้ของ company ถ้ามี, ไม่งั้นใช้ของระบบ)
  */
-export const getDefaultLogoUrl = (): string => {
+export const getDefaultLogoUrl = (companyDefaultLogoUrl?: string | null): string => {
+    // ถ้าองค์กรมี default logo เฉพาะ ให้ใช้อันนั้น
+    if (companyDefaultLogoUrl) {
+        return companyDefaultLogoUrl;
+    }
+    // ไม่งั้นใช้ default logo ของระบบ
     return '/assets/default-logo.svg';
 };
 

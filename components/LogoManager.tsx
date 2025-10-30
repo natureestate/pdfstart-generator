@@ -27,8 +27,14 @@ interface LogoManagerProps {
     /** ประเภทของโลโก้ */
     logoType?: LogoType;
     
+    /** URL ของ default logo ที่กำหนดไว้ในองค์กร (optional) */
+    companyDefaultLogoUrl?: string | null;
+    
     /** Callback เมื่อโลโก้เปลี่ยนแปลง */
     onChange: (logo: string | null, logoUrl: string | null, logoType: LogoType) => void;
+    
+    /** Callback เมื่อต้องการตั้งค่า default logo ใหม่ */
+    onSetDefaultLogo?: (logoUrl: string) => Promise<void>;
     
     /** แสดง label หรือไม่ */
     showLabel?: boolean;
@@ -47,7 +53,9 @@ const LogoManager: React.FC<LogoManagerProps> = ({
     currentLogo,
     logoUrl,
     logoType = 'default',
+    companyDefaultLogoUrl,
     onChange,
+    onSetDefaultLogo,
     showLabel = true,
     label = 'โลโก้บริษัท'
 }) => {
@@ -58,8 +66,8 @@ const LogoManager: React.FC<LogoManagerProps> = ({
     const [availableLogos, setAvailableLogos] = useState<LogoItemWithPreview[]>([]);
     const [isLoadingGallery, setIsLoadingGallery] = useState(false);
 
-    // กำหนด logo ที่จะแสดง
-    const displayLogo = currentLogo || getDefaultLogoUrl();
+    // กำหนด logo ที่จะแสดง (ใช้ default logo ของ company ถ้ามี)
+    const displayLogo = currentLogo || getDefaultLogoUrl(companyDefaultLogoUrl);
     const isDefault = logoType === 'default' || !currentLogo;
 
     /**
@@ -168,8 +176,8 @@ const LogoManager: React.FC<LogoManagerProps> = ({
                 await deleteLogo(logoUrl);
             }
             
-            // รีเซ็ตเป็น default logo
-            const defaultUrl = getDefaultLogoUrl();
+            // รีเซ็ตเป็น default logo (ใช้ของ company ถ้ามี)
+            const defaultUrl = getDefaultLogoUrl(companyDefaultLogoUrl);
             onChange(defaultUrl, null, 'default');
             
             // Clear file input
@@ -188,13 +196,39 @@ const LogoManager: React.FC<LogoManagerProps> = ({
      * ใช้ default logo
      */
     const handleUseDefaultLogo = () => {
-        const defaultUrl = getDefaultLogoUrl();
+        const defaultUrl = getDefaultLogoUrl(companyDefaultLogoUrl);
         onChange(defaultUrl, null, 'default');
         
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
         setUploadError(null);
+    };
+
+    /**
+     * ตั้งค่าโลโก้ปัจจุบันเป็น default logo ของ company
+     */
+    const handleSetAsDefaultLogo = async () => {
+        if (!logoUrl || !onSetDefaultLogo) {
+            setUploadError('ไม่สามารถตั้งค่า default logo ได้');
+            return;
+        }
+
+        if (!confirm('ต้องการตั้งค่าโลโก้นี้เป็น default logo ของบริษัทหรือไม่?')) {
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+            await onSetDefaultLogo(logoUrl);
+            setUploadError(null);
+            console.log('✅ ตั้งค่า default logo สำเร็จ');
+        } catch (error) {
+            console.error('❌ ตั้งค่า default logo ล้มเหลว:', error);
+            setUploadError('ไม่สามารถตั้งค่า default logo ได้');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     /**
@@ -276,7 +310,7 @@ const LogoManager: React.FC<LogoManagerProps> = ({
             
             // ถ้าโลโก้ที่ลบคือโลโก้ที่กำลังใช้งานอยู่ ให้เปลี่ยนเป็น default
             if (logoUrl === logo.url) {
-                const defaultUrl = getDefaultLogoUrl();
+                const defaultUrl = getDefaultLogoUrl(companyDefaultLogoUrl);
                 onChange(defaultUrl, null, 'default');
             }
             
@@ -361,6 +395,21 @@ const LogoManager: React.FC<LogoManagerProps> = ({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" />
                                 </svg>
                             </button>
+                            
+                            {/* ปุ่มตั้งเป็น Default (แสดงเฉพาะเมื่อมี callback และโลโก้ถูกอัปโหลดแล้ว) */}
+                            {onSetDefaultLogo && logoType === 'uploaded' && logoUrl && (
+                                <button
+                                    type="button"
+                                    onClick={handleSetAsDefaultLogo}
+                                    disabled={isUploading}
+                                    className="p-1.5 bg-purple-500 text-white rounded-full shadow-md hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-purple-300 disabled:cursor-not-allowed"
+                                    title="ตั้งเป็น Default Logo ของบริษัท"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                            )}
                             
                             {/* ปุ่มใช้ Default */}
                             <button

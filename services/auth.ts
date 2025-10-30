@@ -1,6 +1,10 @@
 /**
  * Authentication Service
- * บริการจัดการ Firebase Authentication ด้วย Google OAuth และ Phone Authentication
+ * บริการจัดการ Firebase Authentication
+ * - Google OAuth
+ * - Phone Authentication
+ * - Email/Password
+ * - Passwordless Email Link
  */
 
 import { auth } from '../firebase.config';
@@ -13,6 +17,19 @@ import {
     RecaptchaVerifier,
     signInWithPhoneNumber,
     ConfirmationResult,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendSignInLinkToEmail,
+    isSignInWithEmailLink,
+    signInWithEmailLink,
+    ActionCodeSettings,
+    fetchSignInMethodsForEmail,
+    linkWithPopup,
+    linkWithCredential,
+    EmailAuthProvider,
+    sendPasswordResetEmail,
+    updatePassword,
+    reauthenticateWithCredential,
 } from 'firebase/auth';
 
 // สร้าง Google Provider
@@ -259,5 +276,434 @@ export const verifyPhoneOTP = async (
         }
         
         throw new Error(thaiErrorMessage);
+    }
+};
+
+// ==================== Email/Password Authentication ====================
+
+/**
+ * สมัครสมาชิกด้วย Email และ Password
+ * @param email - อีเมล
+ * @param password - รหัสผ่าน (ต้องมีอย่างน้อย 6 ตัวอักษร)
+ * @returns Promise<User> - ข้อมูลผู้ใช้ที่สร้างสำเร็จ
+ */
+export const signUpWithEmailPassword = async (
+    email: string,
+    password: string
+): Promise<User> => {
+    try {
+        console.log('📝 กำลังสมัครสมาชิกด้วย Email:', email);
+        
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        console.log('✅ สมัครสมาชิกสำเร็จ:', {
+            email: user.email,
+            uid: user.uid,
+        });
+        
+        return user;
+    } catch (error: any) {
+        console.error('❌ สมัครสมาชิกล้มเหลว:', error);
+        
+        const errorCode = error.code;
+        let thaiErrorMessage = 'ไม่สามารถสมัครสมาชิกได้';
+        
+        switch (errorCode) {
+            case 'auth/email-already-in-use':
+                thaiErrorMessage = 'อีเมลนี้ถูกใช้งานแล้ว';
+                break;
+            case 'auth/invalid-email':
+                thaiErrorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                break;
+            case 'auth/weak-password':
+                thaiErrorMessage = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                break;
+            case 'auth/operation-not-allowed':
+                thaiErrorMessage = 'ระบบยังไม่เปิดใช้งาน Email/Password Authentication';
+                break;
+            default:
+                thaiErrorMessage = error.message || 'ไม่สามารถสมัครสมาชิกได้';
+        }
+        
+        throw new Error(thaiErrorMessage);
+    }
+};
+
+/**
+ * Login ด้วย Email และ Password
+ * @param email - อีเมล
+ * @param password - รหัสผ่าน
+ * @returns Promise<User> - ข้อมูลผู้ใช้ที่ login สำเร็จ
+ */
+export const signInWithEmailPassword = async (
+    email: string,
+    password: string
+): Promise<User> => {
+    try {
+        console.log('🔐 กำลัง Login ด้วย Email:', email);
+        
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        console.log('✅ Login สำเร็จ:', {
+            email: user.email,
+            uid: user.uid,
+        });
+        
+        return user;
+    } catch (error: any) {
+        console.error('❌ Login ล้มเหลว:', error);
+        
+        const errorCode = error.code;
+        let thaiErrorMessage = 'ไม่สามารถ Login ได้';
+        
+        switch (errorCode) {
+            case 'auth/user-not-found':
+                thaiErrorMessage = 'ไม่พบผู้ใช้นี้ในระบบ';
+                break;
+            case 'auth/wrong-password':
+                thaiErrorMessage = 'รหัสผ่านไม่ถูกต้อง';
+                break;
+            case 'auth/invalid-email':
+                thaiErrorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                break;
+            case 'auth/user-disabled':
+                thaiErrorMessage = 'บัญชีนี้ถูกระงับการใช้งาน';
+                break;
+            case 'auth/too-many-requests':
+                thaiErrorMessage = 'มีการพยายาม Login มากเกินไป กรุณารอสักครู่';
+                break;
+            case 'auth/invalid-credential':
+                thaiErrorMessage = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+                break;
+            default:
+                thaiErrorMessage = error.message || 'ไม่สามารถ Login ได้';
+        }
+        
+        throw new Error(thaiErrorMessage);
+    }
+};
+
+// ==================== Passwordless Email Link Authentication ====================
+
+/**
+ * ส่ง Email Link สำหรับ Passwordless Login
+ * @param email - อีเมลที่ต้องการส่ง link
+ * @returns Promise<void>
+ */
+export const sendEmailLoginLink = async (email: string): Promise<void> => {
+    try {
+        console.log('📧 กำลังส่ง Email Link ไปยัง:', email);
+        
+        // กำหนดค่า ActionCodeSettings
+        const actionCodeSettings: ActionCodeSettings = {
+            // URL ที่จะ redirect กลับมาหลังจากคลิก link
+            url: window.location.origin + '/login',
+            // ต้องเป็น true สำหรับ email link
+            handleCodeInApp: true,
+        };
+        
+        await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+        
+        // บันทึก email ไว้ใน localStorage เพื่อใช้ตอนยืนยัน
+        window.localStorage.setItem('emailForSignIn', email);
+        
+        console.log('✅ ส่ง Email Link สำเร็จ');
+    } catch (error: any) {
+        console.error('❌ ส่ง Email Link ล้มเหลว:', error);
+        
+        const errorCode = error.code;
+        let thaiErrorMessage = 'ไม่สามารถส่ง Email Link ได้';
+        
+        switch (errorCode) {
+            case 'auth/invalid-email':
+                thaiErrorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                break;
+            case 'auth/missing-email':
+                thaiErrorMessage = 'กรุณากรอกอีเมล';
+                break;
+            case 'auth/quota-exceeded':
+                thaiErrorMessage = 'ส่ง Email เกินโควต้า กรุณาลองใหม่ภายหลัง';
+                break;
+            case 'auth/too-many-requests':
+                thaiErrorMessage = 'มีการส่ง Email มากเกินไป กรุณารอสักครู่';
+                break;
+            default:
+                thaiErrorMessage = error.message || 'ไม่สามารถส่ง Email Link ได้';
+        }
+        
+        throw new Error(thaiErrorMessage);
+    }
+};
+
+/**
+ * ตรวจสอบว่า URL ปัจจุบันเป็น Email Link หรือไม่
+ * @returns boolean
+ */
+export const checkIsEmailLink = (): boolean => {
+    return isSignInWithEmailLink(auth, window.location.href);
+};
+
+/**
+ * Login ด้วย Email Link (เรียกใช้หลังจากคลิก link ใน email)
+ * @param email - อีเมล (ถ้าไม่ระบุจะดึงจาก localStorage)
+ * @returns Promise<User> - ข้อมูลผู้ใช้ที่ login สำเร็จ
+ */
+export const signInWithEmailLinkAuth = async (email?: string): Promise<User> => {
+    try {
+        // ดึง email จาก localStorage ถ้าไม่ได้ส่งมา
+        let userEmail = email;
+        if (!userEmail) {
+            userEmail = window.localStorage.getItem('emailForSignIn');
+        }
+        
+        if (!userEmail) {
+            throw new Error('ไม่พบอีเมล กรุณากรอกอีเมลที่ใช้ส่ง link');
+        }
+        
+        console.log('🔗 กำลัง Login ด้วย Email Link:', userEmail);
+        
+        const result = await signInWithEmailLink(auth, userEmail, window.location.href);
+        const user = result.user;
+        
+        // ลบ email ออกจาก localStorage
+        window.localStorage.removeItem('emailForSignIn');
+        
+        console.log('✅ Login ด้วย Email Link สำเร็จ:', {
+            email: user.email,
+            uid: user.uid,
+        });
+        
+        return user;
+    } catch (error: any) {
+        console.error('❌ Login ด้วย Email Link ล้มเหลว:', error);
+        
+        const errorCode = error.code;
+        let thaiErrorMessage = 'ไม่สามารถ Login ด้วย Email Link ได้';
+        
+        switch (errorCode) {
+            case 'auth/invalid-action-code':
+                thaiErrorMessage = 'Link หมดอายุหรือถูกใช้งานแล้ว กรุณาขอ link ใหม่';
+                break;
+            case 'auth/expired-action-code':
+                thaiErrorMessage = 'Link หมดอายุแล้ว กรุณาขอ link ใหม่';
+                break;
+            case 'auth/invalid-email':
+                thaiErrorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                break;
+            case 'auth/user-disabled':
+                thaiErrorMessage = 'บัญชีนี้ถูกระงับการใช้งาน';
+                break;
+            default:
+                thaiErrorMessage = error.message || 'ไม่สามารถ Login ด้วย Email Link ได้';
+        }
+        
+        throw new Error(thaiErrorMessage);
+    }
+};
+
+// ==================== Account Linking ====================
+
+/**
+ * ตรวจสอบว่าอีเมลนี้มี Provider อะไรบ้าง
+ * @param email - อีเมลที่ต้องการตรวจสอบ
+ * @returns Array ของ sign-in methods
+ */
+export const checkEmailProviders = async (email: string): Promise<string[]> => {
+    try {
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        console.log('📧 อีเมล', email, 'มี providers:', methods);
+        return methods;
+    } catch (error: any) {
+        console.error('❌ ตรวจสอบ providers ล้มเหลว:', error);
+        return [];
+    }
+};
+
+/**
+ * Link Google Account กับ Account ปัจจุบัน
+ * @returns Promise<User>
+ */
+export const linkWithGoogle = async (): Promise<User> => {
+    try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error('กรุณา Login ก่อน');
+        }
+
+        console.log('🔗 กำลัง Link กับ Google...');
+        
+        const result = await linkWithPopup(currentUser, googleProvider);
+        const user = result.user;
+        
+        console.log('✅ Link กับ Google สำเร็จ:', {
+            email: user.email,
+            providers: user.providerData.map(p => p.providerId),
+        });
+        
+        return user;
+    } catch (error: any) {
+        console.error('❌ Link กับ Google ล้มเหลว:', error);
+        
+        const errorCode = error.code;
+        let thaiErrorMessage = 'ไม่สามารถ Link กับ Google ได้';
+        
+        switch (errorCode) {
+            case 'auth/provider-already-linked':
+                thaiErrorMessage = 'Google Account นี้ถูก Link ไว้แล้ว';
+                break;
+            case 'auth/credential-already-in-use':
+                thaiErrorMessage = 'Google Account นี้ถูกใช้งานโดยผู้ใช้อื่นแล้ว';
+                break;
+            case 'auth/email-already-in-use':
+                thaiErrorMessage = 'อีเมลนี้ถูกใช้งานแล้ว';
+                break;
+            case 'auth/popup-closed-by-user':
+                thaiErrorMessage = 'คุณปิดหน้าต่าง';
+                break;
+            default:
+                thaiErrorMessage = error.message || 'ไม่สามารถ Link กับ Google ได้';
+        }
+        
+        throw new Error(thaiErrorMessage);
+    }
+};
+
+/**
+ * Link Email/Password กับ Account ปัจจุบัน
+ * @param email - อีเมล
+ * @param password - รหัสผ่าน
+ * @returns Promise<User>
+ */
+export const linkWithEmailPassword = async (
+    email: string,
+    password: string
+): Promise<User> => {
+    try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            throw new Error('กรุณา Login ก่อน');
+        }
+
+        console.log('🔗 กำลัง Link กับ Email/Password...');
+        
+        const credential = EmailAuthProvider.credential(email, password);
+        const result = await linkWithCredential(currentUser, credential);
+        const user = result.user;
+        
+        console.log('✅ Link กับ Email/Password สำเร็จ:', {
+            email: user.email,
+            providers: user.providerData.map(p => p.providerId),
+        });
+        
+        return user;
+    } catch (error: any) {
+        console.error('❌ Link กับ Email/Password ล้มเหลว:', error);
+        
+        const errorCode = error.code;
+        let thaiErrorMessage = 'ไม่สามารถ Link กับ Email/Password ได้';
+        
+        switch (errorCode) {
+            case 'auth/provider-already-linked':
+                thaiErrorMessage = 'Email/Password ถูก Link ไว้แล้ว';
+                break;
+            case 'auth/credential-already-in-use':
+                thaiErrorMessage = 'อีเมลนี้ถูกใช้งานโดยผู้ใช้อื่นแล้ว';
+                break;
+            case 'auth/email-already-in-use':
+                thaiErrorMessage = 'อีเมลนี้ถูกใช้งานแล้ว';
+                break;
+            case 'auth/weak-password':
+                thaiErrorMessage = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                break;
+            case 'auth/invalid-email':
+                thaiErrorMessage = 'รูปแบบอีเมลไม่ถูกต้อง';
+                break;
+            default:
+                thaiErrorMessage = error.message || 'ไม่สามารถ Link กับ Email/Password ได้';
+        }
+        
+        throw new Error(thaiErrorMessage);
+    }
+};
+
+/**
+ * ดึงรายการ Providers ที่ Link ไว้แล้ว
+ * @returns Array ของ provider IDs
+ */
+export const getLinkedProviders = (): string[] => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+        return [];
+    }
+    
+    return currentUser.providerData.map(provider => provider.providerId);
+};
+
+/**
+ * ตรวจสอบว่า Provider นี้ถูก Link ไว้แล้วหรือไม่
+ * @param providerId - Provider ID (เช่น 'google.com', 'password')
+ * @returns boolean
+ */
+export const isProviderLinked = (providerId: string): boolean => {
+    const linkedProviders = getLinkedProviders();
+    return linkedProviders.includes(providerId);
+};
+
+/**
+ * ส่งอีเมลรีเซ็ตรหัสผ่าน
+ * @param email - อีเมลที่ต้องการรีเซ็ตรหัสผ่าน
+ */
+export const sendPasswordReset = async (email: string): Promise<void> => {
+    try {
+        await sendPasswordResetEmail(auth, email);
+        console.log('✅ ส่งอีเมลรีเซ็ตรหัสผ่านสำเร็จ:', email);
+    } catch (error: any) {
+        console.error('❌ ส่งอีเมลรีเซ็ตรหัสผ่านล้มเหลว:', error);
+        throw new Error(getAuthErrorMessage(error.code));
+    }
+};
+
+/**
+ * เปลี่ยนรหัสผ่าน (ต้อง Reauthenticate ก่อน)
+ * @param currentPassword - รหัสผ่านปัจจุบัน
+ * @param newPassword - รหัสผ่านใหม่
+ */
+export const changePassword = async (
+    currentPassword: string,
+    newPassword: string
+): Promise<void> => {
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser || !currentUser.email) {
+        throw new Error('ไม่พบข้อมูลผู้ใช้');
+    }
+
+    try {
+        // Reauthenticate ก่อนเปลี่ยนรหัสผ่าน
+        const credential = EmailAuthProvider.credential(
+            currentUser.email,
+            currentPassword
+        );
+        
+        await reauthenticateWithCredential(currentUser, credential);
+        console.log('✅ Reauthenticate สำเร็จ');
+
+        // เปลี่ยนรหัสผ่าน
+        await updatePassword(currentUser, newPassword);
+        console.log('✅ เปลี่ยนรหัสผ่านสำเร็จ');
+    } catch (error: any) {
+        console.error('❌ เปลี่ยนรหัสผ่านล้มเหลว:', error);
+        
+        if (error.code === 'auth/wrong-password') {
+            throw new Error('รหัสผ่านปัจจุบันไม่ถูกต้อง');
+        } else if (error.code === 'auth/weak-password') {
+            throw new Error('รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร');
+        } else if (error.code === 'auth/requires-recent-login') {
+            throw new Error('กรุณา Logout แล้ว Login ใหม่ก่อนเปลี่ยนรหัสผ่าน');
+        }
+        
+        throw new Error(getAuthErrorMessage(error.code));
     }
 };

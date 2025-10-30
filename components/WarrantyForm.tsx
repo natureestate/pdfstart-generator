@@ -4,6 +4,7 @@ import { formatDateForInput } from '../utils/dateUtils';
 import LogoManager from './LogoManager';
 import CompanyProfileSelector from './CompanyProfileSelector';
 import ServiceTemplateSelector from './ServiceTemplateSelector';
+import CustomerSelector from './CustomerSelector';
 import { generateDocumentNumber } from '../services/documentNumber';
 
 export interface WarrantyFormProps {
@@ -40,7 +41,6 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showCompanySelector, setShowCompanySelector] = useState(false);
-    const [showCustomerSelector, setShowCustomerSelector] = useState(false);
     const [showServiceSelector, setShowServiceSelector] = useState(false);
     const [isGeneratingSerialNumber, setIsGeneratingSerialNumber] = useState(false);
 
@@ -193,29 +193,25 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
             
                 <FormDivider title="ข้อมูลลูกค้า/โครงการ" />
                 <div className="space-y-4">
-                    {/* Customer Profile Selector สำหรับข้อมูลลูกค้า */}
-                    <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="block text-sm font-medium text-slate-700">ข้อมูลลูกค้า</label>
-                            <button
-                                type="button"
-                                onClick={() => setShowCustomerSelector(!showCustomerSelector)}
-                                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                            >
-                                {showCustomerSelector ? 'ซ่อน' : 'เลือกจากที่บันทึกไว้'}
-                            </button>
-                        </div>
-                        {showCustomerSelector && (
-                            <CompanyProfileSelector
-                                type="receiver"
-                                onSelect={(profile) => {
-                                    handleDataChange('customerName', profile.companyName);
-                                    handleDataChange('customerAddress', profile.address);
-                                    setShowCustomerSelector(false);
-                                }}
-                            />
-                        )}
-                    </div>
+                    {/* CustomerSelector - ระบบจัดการลูกค้าแบบครบวงจร */}
+                    <CustomerSelector
+                        label="เลือกข้อมูลลูกค้า"
+                        onSelect={(customer) => {
+                            handleDataChange('customerName', customer.customerName);
+                            handleDataChange('customerPhone', customer.phone);
+                            handleDataChange('customerAddress', customer.address);
+                            if (customer.projectName) {
+                                handleDataChange('projectName', customer.projectName);
+                            }
+                        }}
+                        currentCustomer={{
+                            customerName: data.customerName,
+                            phone: data.customerPhone,
+                            address: data.customerAddress,
+                            projectName: data.projectName,
+                        }}
+                        showSaveButton={true}
+                    />
 
                     <div>
                         <label htmlFor="projectName" className="block text-sm font-medium text-slate-700">ชื่อโครงการ</label>

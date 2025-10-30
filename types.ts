@@ -115,3 +115,41 @@ export interface ServiceTemplate {
     createdAt?: Date;
     updatedAt?: Date;
 }
+
+// Customer - ข้อมูลลูกค้าแบบครบวงจร (ลดการกรอกข้อมูลซ้ำ)
+export interface Customer {
+    id?: string;
+    companyId: string;             // ID ของบริษัทที่สร้างลูกค้านี้
+    userId: string;                // User ที่สร้างลูกค้านี้
+    
+    // ข้อมูลลูกค้าหลัก
+    customerName: string;          // ชื่อลูกค้า/บริษัท
+    customerType: 'individual' | 'company';  // ประเภท: บุคคล หรือ นิติบุคคล
+    
+    // ข้อมูลติดต่อ
+    phone: string;                 // เบอร์โทรศัพท์หลัก
+    alternatePhone?: string;       // เบอร์สำรอง
+    email?: string;                // อีเมล
+    lineId?: string;               // Line ID
+    
+    // ที่อยู่
+    address: string;               // ที่อยู่หลัก
+    district?: string;             // ตำบล/แขวง
+    amphoe?: string;               // อำเภอ/เขต
+    province?: string;             // จังหวัด
+    postalCode?: string;           // รหัสไปรษณีย์
+    
+    // ข้อมูลโครงการ (สำหรับธุรกิจก่อสร้าง/อสังหา)
+    projectName?: string;          // ชื่อโครงการ (ถ้ามี)
+    houseNumber?: string;          // บ้านเลขที่/ห้องเลขที่
+    
+    // Tags และหมายเหตุ
+    tags?: string[];               // Tags สำหรับจัดกลุ่ม เช่น ['VIP', 'ลูกค้าประจำ']
+    notes?: string;                // หมายเหตุเพิ่มเติม
+    
+    // Metadata
+    lastUsedAt?: Date;             // ใช้ล่าสุดเมื่อไร (สำหรับ sorting)
+    usageCount?: number;           // จำนวนครั้งที่ใช้ (สำหรับ suggestion)
+    createdAt?: Date;
+    updatedAt?: Date;
+}

@@ -134,6 +134,7 @@ export const getUserCompanies = async (): Promise<Company[]> => {
                         userId: data.userId,
                         logoUrl: data.logoUrl,
                         logoType: data.logoType,
+                        defaultLogoUrl: data.defaultLogoUrl,
                         memberCount: data.memberCount || 0,
                         createdAt: data.createdAt?.toDate(),
                         updatedAt: data.updatedAt?.toDate(),
@@ -178,6 +179,7 @@ export const getCompanyById = async (companyId: string): Promise<Company | null>
             userId: data.userId,
             logoUrl: data.logoUrl,
             logoType: data.logoType,
+            defaultLogoUrl: data.defaultLogoUrl,
             memberCount: data.memberCount || 0,
             createdAt: data.createdAt?.toDate(),
             updatedAt: data.updatedAt?.toDate(),
@@ -208,6 +210,29 @@ export const updateCompany = async (
     } catch (error) {
         console.error('❌ อัปเดตบริษัทล้มเหลว:', error);
         throw new Error('ไม่สามารถอัปเดตบริษัทได้');
+    }
+};
+
+/**
+ * ตั้งค่า default logo ของบริษัท
+ * @param companyId - ID ของบริษัท
+ * @param defaultLogoUrl - URL ของ default logo ที่ต้องการตั้งค่า
+ */
+export const setCompanyDefaultLogo = async (
+    companyId: string,
+    defaultLogoUrl: string
+): Promise<void> => {
+    try {
+        const docRef = doc(db, COMPANIES_COLLECTION, companyId);
+        await updateDoc(docRef, {
+            defaultLogoUrl: defaultLogoUrl,
+            updatedAt: Timestamp.now(),
+        });
+
+        console.log('✅ ตั้งค่า default logo สำเร็จ:', companyId, defaultLogoUrl);
+    } catch (error) {
+        console.error('❌ ตั้งค่า default logo ล้มเหลว:', error);
+        throw new Error('ไม่สามารถตั้งค่า default logo ได้');
     }
 };
 

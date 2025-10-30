@@ -9,9 +9,6 @@ import { createCompany } from '../services/companies';
 import { Company } from '../types';
 
 const CompanySelector: React.FC = () => {
-    // Debug log
-    console.log('🏢 CompanySelector rendered');
-    
     const { currentCompany, companies, selectCompany, refreshCompanies, loading } = useCompany();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -20,10 +17,12 @@ const CompanySelector: React.FC = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
-    // Debug log
-    console.log('🏢 Current Company:', currentCompany);
-    console.log('🏢 All Companies:', companies);
-    console.log('🏢 Loading:', loading);
+    // Debug logs - แสดงข้อมูลทุกครั้งที่ render
+    console.log('🏢 [CompanySelector] Rendered');
+    console.log('🏢 [CompanySelector] Current Company:', currentCompany);
+    console.log('🏢 [CompanySelector] All Companies:', companies);
+    console.log('🏢 [CompanySelector] Loading:', loading);
+    console.log('🏢 [CompanySelector] Show Dropdown:', showDropdown);
 
     /**
      * เลือกบริษัท

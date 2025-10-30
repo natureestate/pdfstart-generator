@@ -42,7 +42,10 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
      * โหลดรายการบริษัททั้งหมด
      */
     const loadCompanies = async () => {
+        console.log('🔄 [CompanyContext] เริ่มโหลดบริษัท, User:', user?.email);
+        
         if (!user) {
+            console.log('⚠️ [CompanyContext] ไม่มี User, ล้างข้อมูล');
             setCurrentCompany(null);
             setCompanies([]);
             setLoading(false);
@@ -51,6 +54,7 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
 
         try {
             setLoading(true);
+            console.log('⏳ [CompanyContext] กำลังโหลด...');
             
             // ตรวจสอบว่าต้อง Migrate หรือไม่
             const needMigration = await checkNeedMigration();
@@ -66,17 +70,31 @@ export const CompanyProvider: React.FC<CompanyProviderProps> = ({ children }) =>
             
             // ดึงรายการบริษัททั้งหมด
             const companiesList = await getUserCompanies();
+            console.log('📋 [CompanyContext] ดึงบริษัทได้:', companiesList.length, 'องค์กร', companiesList);
             setCompanies(companiesList);
 
-            // ตั้งค่าบริษัทแรกเป็น current (ถ้ามี)
-            if (companiesList.length > 0 && !currentCompany) {
-                setCurrentCompany(companiesList[0]);
-                console.log('✅ เลือกบริษัทแรก:', companiesList[0].name);
+            // ตั้งค่าบริษัทแรกเป็น current (ถ้ามีและยังไม่มี current)
+            if (companiesList.length > 0) {
+                // ถ้ามี currentCompany แล้ว ตรวจสอบว่ายังอยู่ใน list หรือไม่
+                const stillExists = currentCompany && companiesList.find(c => c.id === currentCompany.id);
+                
+                if (!currentCompany || !stillExists) {
+                    setCurrentCompany(companiesList[0]);
+                    console.log('✅ [CompanyContext] เลือกบริษัทแรก:', companiesList[0].name);
+                } else {
+                    console.log('ℹ️ [CompanyContext] ใช้บริษัทเดิม:', currentCompany.name);
+                }
+            } else {
+                console.log('⚠️ [CompanyContext] ไม่มีบริษัทเลย');
+                setCurrentCompany(null);
             }
         } catch (error) {
-            console.error('❌ โหลดบริษัทล้มเหลว:', error);
+            console.error('❌ [CompanyContext] โหลดบริษัทล้มเหลว:', error);
+            setCompanies([]);
+            setCurrentCompany(null);
         } finally {
             setLoading(false);
+            console.log('✅ [CompanyContext] โหลดเสร็จสิ้น');
         }
     };
 

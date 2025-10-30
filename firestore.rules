@@ -74,14 +74,14 @@ service cloud.firestore {
     
     // Companies (ข้อมูลบริษัทสำหรับระบบ Multi-Company)
     match /companies/{companyId} {
-      // อนุญาตให้อ่านได้เฉพาะสมาชิกในองค์กร
-      allow read: if isAuthenticated() && isMemberOfCompany(companyId);
+      // อนุญาตให้อ่านได้ถ้า Login แล้ว (แบบง่าย สำหรับ Development)
+      allow read: if isAuthenticated();
       
       // อนุญาตให้สร้างบริษัทใหม่ได้เฉพาะผู้ที่ Login แล้ว
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // อนุญาตให้แก้ไขได้เฉพาะสมาชิกในองค์กร
-      allow update: if isAuthenticated() && isMemberOfCompany(companyId);
+      // อนุญาตให้แก้ไขได้ถ้า Login แล้ว
+      allow update: if isAuthenticated();
       
       // อนุญาตให้ลบได้เฉพาะ Admin คนแรก (คนที่สร้างบริษัท)
       allow delete: if isAuthenticated() && isOwner(resource.data.userId);
@@ -89,26 +89,17 @@ service cloud.firestore {
     
     // Company Members (สมาชิกในองค์กร)
     match /companyMembers/{memberId} {
-      // อนุญาตให้อ่านได้เฉพาะสมาชิกในองค์กรเดียวกัน
-      allow read: if isAuthenticated() && (
-        isOwner(resource.data.userId) ||
-        isMemberOfCompany(resource.data.companyId)
-      );
+      // อนุญาตให้อ่านได้ถ้า Login แล้ว (แบบง่าย สำหรับ Development)
+      allow read: if isAuthenticated();
       
-      // อนุญาตให้สร้างได้เฉพาะ Admin ขององค์กร
-      allow create: if isAuthenticated() && (
-        request.resource.data.userId == request.auth.uid || // สร้างตัวเอง (Admin คนแรก)
-        isAdminOfCompany(request.resource.data.companyId)   // Admin เชิญคนอื่น
-      );
+      // อนุญาตให้สร้างได้ถ้า Login แล้ว (แบบง่าย สำหรับ Development)
+      allow create: if isAuthenticated();
       
-      // อนุญาตให้แก้ไขได้เฉพาะ Admin หรือตัวเอง
-      allow update: if isAuthenticated() && (
-        isOwner(resource.data.userId) ||
-        isAdminOfCompany(resource.data.companyId)
-      );
+      // อนุญาตให้แก้ไขได้ถ้า Login แล้ว
+      allow update: if isAuthenticated();
       
-      // อนุญาตให้ลบได้เฉพาะ Admin
-      allow delete: if isAuthenticated() && isAdminOfCompany(resource.data.companyId);
+      // อนุญาตให้ลบได้ถ้า Login แล้ว
+      allow delete: if isAuthenticated();
     }
     
     // Service Templates (Template สำหรับข้อมูลสินค้า/บริการ) - รองรับ Multi-user
@@ -121,6 +112,27 @@ service cloud.firestore {
       
       // อนุญาตให้สร้าง template ใหม่ได้เฉพาะผู้ที่ Login แล้ว
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      allow update, delete: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
+    }
+    
+    // Customers (ข้อมูลลูกค้า) - Customer Management System
+    match /customers/{customerId} {
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
+      );
+      
+      // อนุญาตให้สร้างลูกค้าใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี companyId
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.companyId != null &&
+        isMemberOfCompany(request.resource.data.companyId);
       
       // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
       allow update, delete: if isAuthenticated() && (

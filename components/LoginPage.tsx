@@ -1,14 +1,16 @@
 /**
  * Login Page Component
- * หน้า Login ด้วย Google OAuth และ Phone Authentication
+ * หน้า Login ด้วย Google OAuth, Phone, Email/Password และ Email Link
  */
 
 import React, { useState } from 'react';
 import { signInWithGoogle } from '../services/auth';
 import { executeAndVerifyRecaptcha, isRecaptchaScoreValid, getRecaptchaErrorMessage } from '../services/recaptcha';
 import PhoneAuthForm from './PhoneAuthForm';
+import { EmailPasswordForm } from './EmailPasswordForm';
+import { EmailLinkForm } from './EmailLinkForm';
 
-type LoginMethod = 'google' | 'phone';
+type LoginMethod = 'google' | 'phone' | 'email' | 'emailLink';
 
 const LoginPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
@@ -80,51 +82,94 @@ const LoginPage: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Tab สำหรับเลือกวิธี Login */}
-                <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
+                {/* Tab สำหรับเลือกวิธี Login - 4 แถว แนวตั้ง */}
+                <div className="flex flex-col gap-3 mb-6">
+                    {/* Google */}
                     <button
                         onClick={() => {
                             setLoginMethod('google');
                             setError(null);
                         }}
-                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                        className={`w-full py-4 px-6 rounded-xl font-medium transition-all duration-200 ${
                             loginMethod === 'google'
-                                ? 'bg-white text-indigo-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800'
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-[1.02]'
+                                : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-400'
                         }`}
                     >
-                        <div className="flex items-center justify-center gap-2">
-                            <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                <path fill={loginMethod === 'google' ? '#4285F4' : 'currentColor'} d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill={loginMethod === 'google' ? '#34A853' : 'currentColor'} d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill={loginMethod === 'google' ? '#FBBC05' : 'currentColor'} d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                <path fill={loginMethod === 'google' ? '#EA4335' : 'currentColor'} d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        <div className="flex items-center gap-4">
+                            <svg className="w-8 h-8 flex-shrink-0" viewBox="0 0 24 24">
+                                <path fill={loginMethod === 'google' ? '#fff' : '#4285F4'} d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill={loginMethod === 'google' ? '#fff' : '#34A853'} d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill={loginMethod === 'google' ? '#fff' : '#FBBC05'} d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill={loginMethod === 'google' ? '#fff' : '#EA4335'} d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                             </svg>
-                            Google
+                            <span className="text-base font-semibold">เข้าสู่ระบบด้วย Google</span>
                         </div>
                     </button>
+
+                    {/* Phone */}
                     <button
                         onClick={() => {
                             setLoginMethod('phone');
                             setError(null);
                         }}
-                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                        className={`w-full py-4 px-6 rounded-xl font-medium transition-all duration-200 ${
                             loginMethod === 'phone'
-                                ? 'bg-white text-indigo-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800'
+                                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg scale-[1.02]'
+                                : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200 hover:border-green-400'
                         }`}
                     >
-                        <div className="flex items-center justify-center gap-2">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="flex items-center gap-4">
+                            <svg className="w-8 h-8 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
-                            เบอร์โทรศัพท์
+                            <span className="text-base font-semibold">เข้าสู่ระบบด้วยเบอร์โทรศัพท์</span>
+                        </div>
+                    </button>
+
+                    {/* Email/Password */}
+                    <button
+                        onClick={() => {
+                            setLoginMethod('email');
+                            setError(null);
+                        }}
+                        className={`w-full py-4 px-6 rounded-xl font-medium transition-all duration-200 ${
+                            loginMethod === 'email'
+                                ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg scale-[1.02]'
+                                : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200 hover:border-purple-400'
+                        }`}
+                    >
+                        <div className="flex items-center gap-4">
+                            <svg className="w-8 h-8 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                            </svg>
+                            <span className="text-base font-semibold">เข้าสู่ระบบด้วย Email/Password</span>
+                        </div>
+                    </button>
+
+                    {/* Email Link */}
+                    <button
+                        onClick={() => {
+                            setLoginMethod('emailLink');
+                            setError(null);
+                        }}
+                        className={`w-full py-4 px-6 rounded-xl font-medium transition-all duration-200 ${
+                            loginMethod === 'emailLink'
+                                ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg scale-[1.02]'
+                                : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200 hover:border-pink-400'
+                        }`}
+                    >
+                        <div className="flex items-center gap-4">
+                            <svg className="w-8 h-8 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+                            </svg>
+                            <span className="text-base font-semibold">เข้าสู่ระบบด้วย Email Link</span>
                         </div>
                     </button>
                 </div>
 
                 {/* แสดงฟอร์ม Login ตามที่เลือก */}
-                {loginMethod === 'google' ? (
+                {loginMethod === 'google' && (
                     // ปุ่ม Sign in with Google
                     <button
                         onClick={handleGoogleSignIn}
@@ -152,7 +197,9 @@ const LoginPage: React.FC = () => {
                             </>
                         )}
                     </button>
-                ) : (
+                )}
+
+                {loginMethod === 'phone' && (
                     // ฟอร์ม Phone Authentication
                     <PhoneAuthForm
                         onSuccess={() => {
@@ -160,6 +207,24 @@ const LoginPage: React.FC = () => {
                         }}
                         onError={(errorMsg) => {
                             setError(errorMsg);
+                        }}
+                    />
+                )}
+
+                {loginMethod === 'email' && (
+                    // ฟอร์ม Email/Password Authentication
+                    <EmailPasswordForm
+                        onSuccess={() => {
+                            // AuthContext จะจัดการ redirect
+                        }}
+                    />
+                )}
+
+                {loginMethod === 'emailLink' && (
+                    // ฟอร์ม Email Link Authentication
+                    <EmailLinkForm
+                        onSuccess={() => {
+                            // AuthContext จะจัดการ redirect
                         }}
                     />
                 )}

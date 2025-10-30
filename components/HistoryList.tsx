@@ -223,19 +223,19 @@ const HistoryList: React.FC<HistoryListProps> = ({ activeDocType, onLoadDocument
                         <div key={card.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-semibold text-gray-900">{card.productName || 'ไม่ระบุสินค้า'}</h3>
+                                    <h3 className="text-lg font-semibold text-gray-900">{card.serviceName || card.projectName || 'ไม่ระบุสินค้า'}</h3>
                                     <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-gray-600">
                                         <div>
-                                            <span className="font-medium">หมายเลข:</span> {card.serialNumber}
+                                            <span className="font-medium">หมายเลข:</span> {card.warrantyNumber || 'ไม่ระบุ'}
                                         </div>
                                         <div>
-                                            <span className="font-medium">ลูกค้า:</span> {card.customerName}
+                                            <span className="font-medium">ลูกค้า:</span> {card.customerName || 'ไม่ระบุ'}
                                         </div>
                                         <div>
                                             <span className="font-medium">วันซื้อ:</span> {card.purchaseDate ? formatDate(card.purchaseDate) : 'ไม่ระบุ'}
                                         </div>
                                         <div>
-                                            <span className="font-medium">รับประกัน:</span> {card.warrantyPeriod}
+                                            <span className="font-medium">รับประกัน:</span> {card.warrantyPeriod || 'ไม่ระบุ'}
                                         </div>
                                     </div>
                                     <div className="mt-2 text-xs text-gray-400">

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบข้อมูล Firestore</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.loading {
+            background: #FFF3CD;
+            color: #856404;
+        }
+        .status.success {
+            background: #D4EDDA;
+            color: #155724;
+        }
+        .status.error {
+            background: #F8D7DA;
+            color: #721C24;
+        }
+        .data-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .info-box {
+            background: #E7F3FF;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge.admin {
+            background: #FFF3E0;
+            color: #E65100;
+        }
+        .badge.member {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+        .badge.active {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        .badge.pending {
+            background: #FFF3E0;
+            color: #F57C00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 ทดสอบข้อมูล Firestore - Multi-User System</h1>
+        
+        <div class="info-box">
+            <strong>📌 วิธีใช้:</strong><br>
+            1. เปิดไฟล์นี้ใน Browser (ต้องรัน dev server)<br>
+            2. Login เข้าระบบ<br>
+            3. คลิกปุ่มทดสอบเพื่อดูข้อมูล
+        </div>
+
+        <div id="auth-status" class="status loading">
+            ⏳ กำลังตรวจสอบสถานะการ Login...
+        </div>
+
+        <div id="user-info"></div>
+
+        <div id="controls" style="display: none;">
+            <h2>🛠️ เครื่องมือทดสอบ</h2>
+            <button onclick="testGetCompanies()">📋 ดึงรายการบริษัท</button>
+            <button onclick="testGetMembers()">👥 ดึงรายการสมาชิก</button>
+            <button onclick="testCheckAdmin()">👑 ตรวจสอบสิทธิ์ Admin</button>
+            <button onclick="clearResults()">🗑️ ล้างผลลัพธ์</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <!-- Import Firebase และ Services -->
+    <script type="module">
+        import { auth, db } from './firebase.config.js';
+        import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+        import { collection, getDocs, query, where, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        let currentUser = null;
+
+        // ตรวจสอบสถานะ Login
+        onAuthStateChanged(auth, (user) => {
+            const authStatus = document.getElementById('auth-status');
+            const userInfo = document.getElementById('user-info');
+            const controls = document.getElementById('controls');
+
+            if (user) {
+                currentUser = user;
+                authStatus.className = 'status success';
+                authStatus.innerHTML = '✅ Login สำเร็จ';
+                
+                userInfo.innerHTML = `
+                    <h2>👤 ข้อมูลผู้ใช้</h2>
+                    <div class="data-box">
+User ID: ${user.uid}
+Email: ${user.email}
+Display Name: ${user.displayName || '-'}
+Phone: ${user.phoneNumber || '-'}
+                    </div>
+                `;
+                
+                controls.style.display = 'block';
+            } else {
+                authStatus.className = 'status error';
+                authStatus.innerHTML = '❌ ยังไม่ได้ Login - กรุณา Login ก่อนใช้งาน';
+                userInfo.innerHTML = '';
+                controls.style.display = 'none';
+            }
+        });
+
+        // ฟังก์ชันทดสอบดึงรายการบริษัท
+        window.testGetCompanies = async () => {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status loading">⏳ กำลังดึงข้อมูลบริษัท...</div>';
+
+            try {
+                // 1. ดึงจาก memberships
+                const membershipsQuery = query(
+                    collection(db, 'companyMembers'),
+                    where('userId', '==', currentUser.uid),
+                    where('status', '==', 'active'),
+                    orderBy('createdAt', 'desc')
+                );
+                const membershipsSnapshot = await getDocs(membershipsQuery);
+                
+                console.log('Memberships:', membershipsSnapshot.docs.length);
+
+                const companies = [];
+                for (const doc of membershipsSnapshot.docs) {
+                    const memberData = doc.data();
+                    console.log('Member Data:', memberData);
+                    
+                    // ดึงข้อมูลบริษัท
+                    const companyQuery = query(
+                        collection(db, 'companies'),
+                        where('__name__', '==', memberData.companyId)
+                    );
+                    const companySnapshot = await getDocs(companyQuery);
+                    
+                    if (!companySnapshot.empty) {
+                        const companyData = companySnapshot.docs[0].data();
+                        companies.push({
+                            id: companySnapshot.docs[0].id,
+                            ...companyData,
+                            memberRole: memberData.role
+                        });
+                    }
+                }
+
+                // 2. Fallback: ดึงบริษัทเก่าที่เป็นเจ้าของ
+                const oldCompaniesQuery = query(
+                    collection(db, 'companies'),
+                    where('userId', '==', currentUser.uid),
+                    orderBy('createdAt', 'desc')
+                );
+                const oldCompaniesSnapshot = await getDocs(oldCompaniesQuery);
+                
+                oldCompaniesSnapshot.docs.forEach(doc => {
+                    if (!companies.find(c => c.id === doc.id)) {
+                        companies.push({
+                            id: doc.id,
+                            ...doc.data(),
+                            memberRole: 'owner'
+                        });
+                    }
+                });
+
+                // แสดงผล
+                if (companies.length === 0) {
+                    results.innerHTML = `
+                        <div class="status error">
+                            ❌ ไม่พบบริษัทใดๆ<br>
+                            <small>คุณยังไม่ได้สร้างบริษัทหรือยังไม่ได้รับเชิญเข้าองค์กร</small>
+                        </div>
+                    `;
+                } else {
+                    let html = `
+                        <div class="status success">
+                            ✅ พบ ${companies.length} บริษัท
+                        </div>
+                        <h2>📋 รายการบริษัท</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ชื่อบริษัท</th>
+                                    <th>ที่อยู่</th>
+                                    <th>จำนวนสมาชิก</th>
+                                    <th>บทบาท</th>
+                                    <th>วันที่สร้าง</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    companies.forEach(company => {
+                        const roleClass = company.memberRole === 'admin' || company.memberRole === 'owner' ? 'admin' : 'member';
+                        const roleText = company.memberRole === 'owner' ? '👑 Owner' : 
+                                       company.memberRole === 'admin' ? '👑 Admin' : '👤 Member';
+                        
+                        html += `
+                            <tr>
+                                <td><strong>${company.name}</strong></td>
+                                <td>${company.address || '-'}</td>
+                                <td>${company.memberCount || 0} คน</td>
+                                <td><span class="badge ${roleClass}">${roleText}</span></td>
+                                <td>${company.createdAt ? new Date(company.createdAt.seconds * 1000).toLocaleDateString('th-TH') : '-'}</td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                            </tbody>
+                        </table>
+                        <h3>📄 Raw Data</h3>
+                        <div class="data-box">${JSON.stringify(companies, null, 2)}</div>
+                    `;
+
+                    results.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                results.innerHTML = `
+                    <div class="status error">
+                        ❌ เกิดข้อผิดพลาด: ${error.message}
+                    </div>
+                    <div class="data-box">${error.stack}</div>
+                `;
+            }
+        };
+
+        // ฟังก์ชันทดสอบดึงรายการสมาชิก
+        window.testGetMembers = async () => {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status loading">⏳ กำลังดึงข้อมูลสมาชิก...</div>';
+
+            try {
+                // ดึงรายการบริษัทก่อน
+                const companiesQuery = query(
+                    collection(db, 'companies'),
+                    where('userId', '==', currentUser.uid)
+                );
+                const companiesSnapshot = await getDocs(companiesQuery);
+
+                if (companiesSnapshot.empty) {
+                    results.innerHTML = `
+                        <div class="status error">
+                            ❌ ไม่พบบริษัทที่คุณเป็นเจ้าของ<br>
+                            <small>กรุณาทดสอบ "ดึงรายการบริษัท" ก่อน</small>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const companyId = companiesSnapshot.docs[0].id;
+                const companyName = companiesSnapshot.docs[0].data().name;
+
+                // ดึงสมาชิก
+                const membersQuery = query(
+                    collection(db, 'companyMembers'),
+                    where('companyId', '==', companyId),
+                    orderBy('createdAt', 'desc')
+                );
+                const membersSnapshot = await getDocs(membersQuery);
+
+                let html = `
+                    <div class="status success">
+                        ✅ พบ ${membersSnapshot.docs.length} สมาชิกในบริษัท "${companyName}"
+                    </div>
+                    <h2>👥 รายการสมาชิก</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>อีเมล</th>
+                                <th>ชื่อ</th>
+                                <th>บทบาท</th>
+                                <th>สถานะ</th>
+                                <th>วันที่เข้าร่วม</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                membersSnapshot.docs.forEach(doc => {
+                    const member = doc.data();
+                    const roleClass = member.role === 'admin' ? 'admin' : 'member';
+                    const roleText = member.role === 'admin' ? '👑 Admin' : '👤 Member';
+                    const statusClass = member.status;
+                    const statusText = member.status === 'active' ? '✅ Active' : 
+                                     member.status === 'pending' ? '⏳ Pending' : '❌ Inactive';
+
+                    html += `
+                        <tr>
+                            <td>${member.email}</td>
+                            <td>${member.displayName || '-'}</td>
+                            <td><span class="badge ${roleClass}">${roleText}</span></td>
+                            <td><span class="badge ${statusClass}">${statusText}</span></td>
+                            <td>${member.joinedAt ? new Date(member.joinedAt.seconds * 1000).toLocaleDateString('th-TH') : '-'}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <h3>📄 Raw Data</h3>
+                    <div class="data-box">${JSON.stringify(membersSnapshot.docs.map(d => ({id: d.id, ...d.data()})), null, 2)}</div>
+                `;
+
+                results.innerHTML = html;
+            } catch (error) {
+                console.error('Error:', error);
+                results.innerHTML = `
+                    <div class="status error">
+                        ❌ เกิดข้อผิดพลาด: ${error.message}
+                    </div>
+                    <div class="data-box">${error.stack}</div>
+                `;
+            }
+        };
+
+        // ฟังก์ชันทดสอบตรวจสอบสิทธิ์ Admin
+        window.testCheckAdmin = async () => {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status loading">⏳ กำลังตรวจสอบสิทธิ์...</div>';
+
+            try {
+                // ดึงรายการบริษัท
+                const companiesQuery = query(
+                    collection(db, 'companies'),
+                    where('userId', '==', currentUser.uid)
+                );
+                const companiesSnapshot = await getDocs(companiesQuery);
+
+                if (companiesSnapshot.empty) {
+                    results.innerHTML = `
+                        <div class="status error">
+                            ❌ ไม่พบบริษัทที่คุณเป็นเจ้าของ
+                        </div>
+                    `;
+                    return;
+                }
+
+                const companyId = companiesSnapshot.docs[0].id;
+                const companyName = companiesSnapshot.docs[0].data().name;
+
+                // ตรวจสอบสิทธิ์ Admin
+                const adminQuery = query(
+                    collection(db, 'companyMembers'),
+                    where('companyId', '==', companyId),
+                    where('userId', '==', currentUser.uid),
+                    where('role', '==', 'admin'),
+                    where('status', '==', 'active')
+                );
+                const adminSnapshot = await getDocs(adminQuery);
+
+                const isAdmin = !adminSnapshot.empty;
+
+                results.innerHTML = `
+                    <div class="status ${isAdmin ? 'success' : 'error'}">
+                        ${isAdmin ? '✅ คุณเป็น Admin' : '❌ คุณไม่ใช่ Admin'} ของบริษัท "${companyName}"
+                    </div>
+                    <h2>📊 รายละเอียด</h2>
+                    <div class="data-box">
+Company ID: ${companyId}
+Company Name: ${companyName}
+User ID: ${currentUser.uid}
+Is Admin: ${isAdmin}
+Admin Documents Found: ${adminSnapshot.docs.length}
+                    </div>
+                `;
+
+                if (adminSnapshot.docs.length > 0) {
+                    results.innerHTML += `
+                        <h3>📄 Admin Document</h3>
+                        <div class="data-box">${JSON.stringify(adminSnapshot.docs[0].data(), null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                results.innerHTML = `
+                    <div class="status error">
+                        ❌ เกิดข้อผิดพลาด: ${error.message}
+                    </div>
+                    <div class="data-box">${error.stack}</div>
+                `;
+            }
+        };
+
+        // ฟังก์ชันล้างผลลัพธ์
+        window.clearResults = () => {
+            document.getElementById('results').innerHTML = '';
+        };
+    </script>
+</body>
+</html>
+

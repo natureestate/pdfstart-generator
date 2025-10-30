@@ -11,7 +11,9 @@ export interface DeliveryFormProps {
     sharedLogo?: string | null;
     sharedLogoUrl?: string | null;
     sharedLogoType?: LogoType;
+    companyDefaultLogoUrl?: string | null;
     onLogoChange?: (logo: string | null, logoUrl: string | null, logoType: LogoType) => void;
+    onSetDefaultLogo?: (logoUrl: string) => Promise<void>;
 }
 
 const FormDivider: React.FC<{ title: string }> = ({ title }) => (
@@ -31,7 +33,9 @@ const DeliveryForm: React.FC<DeliveryFormProps> = ({
     sharedLogo,
     sharedLogoUrl,
     sharedLogoType,
-    onLogoChange
+    companyDefaultLogoUrl,
+    onLogoChange,
+    onSetDefaultLogo
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -163,7 +167,9 @@ const DeliveryForm: React.FC<DeliveryFormProps> = ({
                         currentLogo={sharedLogo !== undefined ? sharedLogo : data.logo}
                         logoUrl={sharedLogoUrl !== undefined ? sharedLogoUrl : data.logoUrl}
                         logoType={sharedLogoType || data.logoType || 'default'}
+                        companyDefaultLogoUrl={companyDefaultLogoUrl}
                         onChange={handleLogoChange}
+                        onSetDefaultLogo={onSetDefaultLogo}
                         showLabel={true}
                         label="โลโก้บริษัท"
                      />

@@ -26,9 +26,11 @@
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.18.9",
     "@vitejs/plugin-react": "^5.0.0",
+    "firebase-admin": "^13.5.0",
     "shadcn": "^3.4.0",
+    "ts-node": "^10.9.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
