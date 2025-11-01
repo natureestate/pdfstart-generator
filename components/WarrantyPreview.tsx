@@ -31,17 +31,7 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
         <div ref={ref} className="bg-white shadow-xl w-full aspect-[210/297] overflow-auto flex flex-col" id="printable-area">
             <div className="p-3 border-2 border-indigo-700 m-1.5 flex-grow flex flex-col">
                 {/* Header Section */}
-                <header className="relative mb-2 pb-1.5 border-b-2 border-indigo-300">
-                    {/* Logo ที่มุมขวาบน */}
-                    <div className="absolute top-0 right-0">
-                        <img 
-                            src={displayLogo} 
-                            alt="Company Logo" 
-                            className="max-h-20 object-contain"
-                            crossOrigin="anonymous"
-                        />
-                    </div>
-                    
+                <header className="mb-2 pb-1.5 border-b-2 border-indigo-300">
                     {/* ข้อความส่วนหัว */}
                     <div className="text-center pt-2">
                         <h1 className="text-2xl font-bold text-indigo-900 tracking-wide">ใบรับประกันสินค้า</h1>
@@ -206,8 +196,14 @@ const WarrantyPreview = forwardRef<HTMLDivElement, WarrantyPreviewProps>(({ data
                             <p className="text-xs">ผู้ออกเอกสาร: <span className="font-medium text-slate-900">{data.issuedBy || '........................'}</span></p>
                         </div>
                         <div className="text-center">
-                            <div className="w-28 h-10 border-2 border-dashed border-indigo-400 mx-auto flex items-center justify-center bg-indigo-50">
-                                <p className="text-indigo-600 text-xs font-medium">ตราประทับบริษัท</p>
+                            {/* แสดงโลโก้บริษัทแทนตราประทับ */}
+                            <div className="w-28 h-20 mx-auto flex items-center justify-center">
+                                <img 
+                                    src={displayLogo} 
+                                    alt="Company Logo" 
+                                    className="max-h-20 max-w-28 object-contain"
+                                    crossOrigin="anonymous"
+                                />
                             </div>
                             <p className="mt-0.5 text-indigo-700 text-xs font-medium">ขอขอบคุณที่เลือกใช้สินค้าและบริการของเรา</p>
                         </div>
