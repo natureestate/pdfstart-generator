@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { CompanyMember, UserRole } from '../types';
+import { CompanyMember, UserRole, Invitation } from '../types';
 import {
     getCompanyMembers,
     addCompanyMember,
@@ -13,7 +13,14 @@ import {
     checkIsAdmin,
     updateMemberCount,
 } from '../services/companyMembers';
+import {
+    getCompanyInvitations,
+    cancelInvitation,
+    resendInvitation,
+    checkExpiredInvitations,
+} from '../services/invitations';
 import { useAuth } from '../contexts/AuthContext';
+import InviteMemberModal from './InviteMemberModal';
 
 interface UserManagementProps {
     companyId: string;
@@ -27,17 +34,15 @@ interface UserManagementProps {
 const UserManagement: React.FC<UserManagementProps> = ({ companyId, companyName, onClose }) => {
     const { user } = useAuth();
     const [members, setMembers] = useState<CompanyMember[]>([]);
+    const [invitations, setInvitations] = useState<Invitation[]>([]);
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
-    // Form state สำหรับเพิ่มสมาชิกใหม่
-    const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [newMemberRole, setNewMemberRole] = useState<UserRole>('member');
-    const [adding, setAdding] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<'members' | 'invitations'>('members');
 
     /**
-     * โหลดรายการสมาชิก
+     * โหลดรายการสมาชิกและคำเชิญ
      */
     const loadMembers = async () => {
         try {
@@ -53,48 +58,59 @@ const UserManagement: React.FC<UserManagementProps> = ({ companyId, companyName,
             // ดึงรายการสมาชิก
             const membersList = await getCompanyMembers(companyId);
             setMembers(membersList);
+
+            // ดึงรายการคำเชิญ (เฉพาะ Admin)
+            if (user) {
+                const adminStatus = await checkIsAdmin(companyId, user.uid);
+                if (adminStatus) {
+                    // ตรวจสอบคำเชิญที่หมดอายุก่อน
+                    await checkExpiredInvitations(companyId);
+                    
+                    const invitationsList = await getCompanyInvitations(companyId);
+                    setInvitations(invitationsList);
+                }
+            }
         } catch (err: any) {
-            console.error('❌ โหลดสมาชิกล้มเหลว:', err);
-            setError(err.message || 'ไม่สามารถโหลดรายการสมาชิกได้');
+            console.error('❌ โหลดข้อมูลล้มเหลว:', err);
+            setError(err.message || 'ไม่สามารถโหลดรายการได้');
         } finally {
             setLoading(false);
         }
     };
 
     /**
-     * เพิ่มสมาชิกใหม่
+     * ยกเลิกคำเชิญ
      */
-    const handleAddMember = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!newMemberEmail.trim()) {
-            alert('กรุณากรอกอีเมล');
+    const handleCancelInvitation = async (invitationId: string, email: string) => {
+        if (!confirm(`ต้องการยกเลิกคำเชิญสำหรับ ${email} หรือไม่?`)) {
             return;
         }
 
         try {
-            setAdding(true);
-            setError(null);
-
-            // เพิ่มสมาชิก
-            await addCompanyMember(companyId, newMemberEmail.trim(), newMemberRole);
-
-            // อัปเดตจำนวนสมาชิก
-            await updateMemberCount(companyId);
-
-            // รีเฟรชรายการ
+            await cancelInvitation(invitationId);
             await loadMembers();
-
-            // เคลียร์ฟอร์ม
-            setNewMemberEmail('');
-            setNewMemberRole('member');
-
-            alert(`✅ เชิญ ${newMemberEmail} เข้าองค์กรสำเร็จ`);
+            alert('✅ ยกเลิกคำเชิญสำเร็จ');
         } catch (err: any) {
-            console.error('❌ เพิ่มสมาชิกล้มเหลว:', err);
-            setError(err.message || 'ไม่สามารถเพิ่มสมาชิกได้');
-        } finally {
-            setAdding(false);
+            console.error('❌ ยกเลิกคำเชิญล้มเหลว:', err);
+            alert(err.message || 'ไม่สามารถยกเลิกคำเชิญได้');
+        }
+    };
+
+    /**
+     * ส่งคำเชิญใหม่
+     */
+    const handleResendInvitation = async (invitationId: string, email: string) => {
+        if (!confirm(`ต้องการส่งคำเชิญใหม่ให้ ${email} หรือไม่?`)) {
+            return;
+        }
+
+        try {
+            await resendInvitation(invitationId);
+            await loadMembers();
+            alert('✅ ส่งคำเชิญใหม่สำเร็จ');
+        } catch (err: any) {
+            console.error('❌ ส่งคำเชิญใหม่ล้มเหลว:', err);
+            alert(err.message || 'ไม่สามารถส่งคำเชิญใหม่ได้');
         }
     };
 
@@ -172,47 +188,37 @@ const UserManagement: React.FC<UserManagementProps> = ({ companyId, companyName,
                 </div>
             )}
 
-            {/* ฟอร์มเพิ่มสมาชิก (เฉพาะ Admin) */}
+            {/* ปุ่มเชิญสมาชิกใหม่ (เฉพาะ Admin) */}
             {isAdmin && (
-                <div className="add-member-section">
-                    <h3>เชิญสมาชิกใหม่</h3>
-                    <form onSubmit={handleAddMember} className="add-member-form">
-                        <div className="form-group">
-                            <label htmlFor="email">อีเมล:</label>
-                            <input
-                                type="email"
-                                id="email"
-                                value={newMemberEmail}
-                                onChange={(e) => setNewMemberEmail(e.target.value)}
-                                placeholder="example@email.com"
-                                required
-                                disabled={adding}
-                            />
-                        </div>
+                <div className="invite-button-section">
+                    <button onClick={() => setShowInviteModal(true)} className="btn-invite">
+                        📨 เชิญสมาชิกใหม่
+                    </button>
+                </div>
+            )}
 
-                        <div className="form-group">
-                            <label htmlFor="role">บทบาท:</label>
-                            <select
-                                id="role"
-                                value={newMemberRole}
-                                onChange={(e) => setNewMemberRole(e.target.value as UserRole)}
-                                disabled={adding}
-                            >
-                                <option value="member">Member (สมาชิกทั่วไป)</option>
-                                <option value="admin">Admin (ผู้จัดการ)</option>
-                            </select>
-                        </div>
-
-                        <button type="submit" disabled={adding} className="btn-primary">
-                            {adding ? 'กำลังเพิ่ม...' : '+ เชิญสมาชิก'}
-                        </button>
-                    </form>
+            {/* Tabs */}
+            {isAdmin && (
+                <div className="tabs">
+                    <button
+                        className={`tab ${activeTab === 'members' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('members')}
+                    >
+                        👥 สมาชิก ({members.length})
+                    </button>
+                    <button
+                        className={`tab ${activeTab === 'invitations' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('invitations')}
+                    >
+                        📨 คำเชิญ ({invitations.filter(i => i.status === 'pending').length})
+                    </button>
                 </div>
             )}
 
             {/* รายการสมาชิก */}
-            <div className="members-list-section">
-                <h3>รายการสมาชิก ({members.length} คน)</h3>
+            {activeTab === 'members' && (
+                <div className="members-list-section">
+                    <h3>รายการสมาชิก ({members.length} คน)</h3>
                 
                 {members.length === 0 ? (
                     <div className="no-members">ยังไม่มีสมาชิกในองค์กร</div>
@@ -284,7 +290,98 @@ const UserManagement: React.FC<UserManagementProps> = ({ companyId, companyName,
                         </table>
                     </div>
                 )}
-            </div>
+                </div>
+            )}
+
+            {/* รายการคำเชิญ (เฉพาะ Admin) */}
+            {activeTab === 'invitations' && isAdmin && (
+                <div className="invitations-list-section">
+                    <h3>รายการคำเชิญ ({invitations.length} คำเชิญ)</h3>
+                    
+                    {invitations.length === 0 ? (
+                        <div className="no-invitations">ยังไม่มีคำเชิญ</div>
+                    ) : (
+                        <div className="invitations-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>อีเมล</th>
+                                        <th>บทบาท</th>
+                                        <th>สถานะ</th>
+                                        <th>เชิญโดย</th>
+                                        <th>วันที่สร้าง</th>
+                                        <th>หมดอายุ</th>
+                                        <th>จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {invitations.map((invitation) => (
+                                        <tr key={invitation.id}>
+                                            <td>{invitation.email}</td>
+                                            <td>
+                                                <span className={`role-badge ${invitation.role}`}>
+                                                    {invitation.role === 'admin' ? '👑 Admin' : '👤 Member'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`status-badge invitation-${invitation.status}`}>
+                                                    {invitation.status === 'pending' ? '⏳ รอการยอมรับ' :
+                                                     invitation.status === 'accepted' ? '✅ ยอมรับแล้ว' :
+                                                     invitation.status === 'rejected' ? '❌ ปฏิเสธ' :
+                                                     '⏰ หมดอายุ'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {invitation.invitedByName || '-'}
+                                            </td>
+                                            <td>
+                                                {invitation.createdAt
+                                                    ? invitation.createdAt.toLocaleDateString('th-TH')
+                                                    : '-'}
+                                            </td>
+                                            <td>
+                                                {invitation.expiresAt
+                                                    ? invitation.expiresAt.toLocaleDateString('th-TH')
+                                                    : '-'}
+                                            </td>
+                                            <td className="actions-cell">
+                                                {invitation.status === 'pending' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleResendInvitation(invitation.id!, invitation.email)}
+                                                            className="btn-small btn-secondary"
+                                                            title="ส่งใหม่"
+                                                        >
+                                                            🔄
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleCancelInvitation(invitation.id!, invitation.email)}
+                                                            className="btn-small btn-danger"
+                                                            title="ยกเลิก"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Modal เชิญสมาชิก */}
+            {showInviteModal && (
+                <InviteMemberModal
+                    companyId={companyId}
+                    companyName={companyName}
+                    onClose={() => setShowInviteModal(false)}
+                    onSuccess={loadMembers}
+                />
+            )}
 
             <style>{`
                 .user-management-container {
@@ -337,83 +434,68 @@ const UserManagement: React.FC<UserManagementProps> = ({ companyId, companyName,
                     margin-bottom: 20px;
                 }
 
-                .add-member-section {
-                    background: #f5f5f5;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-bottom: 30px;
+                .invite-button-section {
+                    margin-bottom: 20px;
                 }
 
-                .add-member-section h3 {
-                    margin-top: 0;
-                    color: #333;
-                }
-
-                .add-member-form {
-                    display: flex;
-                    gap: 15px;
-                    align-items: flex-end;
-                    flex-wrap: wrap;
-                }
-
-                .form-group {
-                    flex: 1;
-                    min-width: 200px;
-                }
-
-                .form-group label {
-                    display: block;
-                    margin-bottom: 5px;
-                    font-weight: 500;
-                    color: #555;
-                }
-
-                .form-group input,
-                .form-group select {
-                    width: 100%;
-                    padding: 10px;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    font-size: 14px;
-                }
-
-                .form-group input:focus,
-                .form-group select:focus {
-                    outline: none;
-                    border-color: #2196F3;
-                }
-
-                .btn-primary {
-                    background: #2196F3;
+                .btn-invite {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     color: white;
                     border: none;
-                    padding: 10px 20px;
-                    border-radius: 4px;
+                    padding: 12px 24px;
+                    border-radius: 8px;
                     cursor: pointer;
-                    font-size: 14px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    transition: all 0.3s;
+                }
+
+                .btn-invite:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                }
+
+                .tabs {
+                    display: flex;
+                    gap: 10px;
+                    margin-bottom: 20px;
+                    border-bottom: 2px solid #e0e0e0;
+                }
+
+                .tab {
+                    background: none;
+                    border: none;
+                    padding: 12px 24px;
+                    cursor: pointer;
+                    font-size: 16px;
                     font-weight: 500;
-                    transition: background 0.3s;
+                    color: #666;
+                    border-bottom: 3px solid transparent;
+                    transition: all 0.3s;
                 }
 
-                .btn-primary:hover:not(:disabled) {
-                    background: #1976D2;
+                .tab:hover {
+                    color: #2196F3;
                 }
 
-                .btn-primary:disabled {
-                    background: #ccc;
-                    cursor: not-allowed;
+                .tab.active {
+                    color: #2196F3;
+                    border-bottom-color: #2196F3;
                 }
 
-                .members-list-section {
-                    margin-top: 30px;
+                .members-list-section,
+                .invitations-list-section {
+                    margin-top: 20px;
                 }
 
-                .members-list-section h3 {
+                .members-list-section h3,
+                .invitations-list-section h3 {
                     margin-bottom: 15px;
                     color: #333;
                 }
 
-                .no-members {
+                .no-members,
+                .no-invitations {
                     text-align: center;
                     padding: 40px;
                     color: #999;
@@ -483,6 +565,26 @@ const UserManagement: React.FC<UserManagementProps> = ({ companyId, companyName,
                     color: #c62828;
                 }
 
+                .status-badge.invitation-pending {
+                    background: #fff3e0;
+                    color: #f57c00;
+                }
+
+                .status-badge.invitation-accepted {
+                    background: #e8f5e9;
+                    color: #2e7d32;
+                }
+
+                .status-badge.invitation-rejected {
+                    background: #ffebee;
+                    color: #c62828;
+                }
+
+                .status-badge.invitation-expired {
+                    background: #f5f5f5;
+                    color: #666;
+                }
+
                 .actions-cell {
                     display: flex;
                     gap: 8px;
@@ -519,20 +621,25 @@ const UserManagement: React.FC<UserManagementProps> = ({ companyId, companyName,
                 }
 
                 @media (max-width: 768px) {
-                    .add-member-form {
-                        flex-direction: column;
+                    .tabs {
+                        overflow-x: auto;
                     }
 
-                    .form-group {
-                        width: 100%;
+                    .tab {
+                        white-space: nowrap;
+                        font-size: 14px;
+                        padding: 10px 16px;
                     }
 
-                    .members-table {
+                    .members-table,
+                    .invitations-table {
                         font-size: 12px;
                     }
 
                     .members-table th,
-                    .members-table td {
+                    .members-table td,
+                    .invitations-table th,
+                    .invitations-table td {
                         padding: 8px;
                     }
                 }

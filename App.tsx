@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { DeliveryNoteData, WarrantyData, LogoType } from './types';
 import { AuthProvider } from './contexts/AuthContext';
 import { CompanyProvider, useCompany } from './contexts/CompanyContext';
@@ -9,6 +10,8 @@ import DocumentPreview from './components/DocumentPreview';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyPreview from './components/WarrantyPreview';
 import HistoryList from './components/HistoryList';
+import AcceptInvitationPage from './components/AcceptInvitationPage';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
 import { generatePdf } from './services/pdfGenerator';
 import { saveDeliveryNote, saveWarrantyCard } from './services/firestore';
 import type { DeliveryNoteDocument, WarrantyDocument } from './services/firestore';
@@ -400,15 +403,36 @@ const AppContent: React.FC = () => {
     );
 };
 
-// Main App Component with Providers
+// Main App Component with Providers and Routing
 const App: React.FC = () => {
     return (
         <AuthProvider>
-            <CompanyProvider>
-                <ProtectedRoute>
-                    <AppContent />
-                </ProtectedRoute>
-            </CompanyProvider>
+            <Routes>
+                {/* หน้ายอมรับคำเชิญ - ไม่ต้อง login ก่อน */}
+                <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+                
+                {/* หน้า Super Admin - ต้อง login และเป็น Super Admin (ไม่ต้องมี CompanyProvider) */}
+                <Route 
+                    path="/superadmin/*" 
+                    element={
+                        <ProtectedRoute>
+                            <SuperAdminDashboard />
+                        </ProtectedRoute>
+                    } 
+                />
+                
+                {/* หน้าหลัก - ต้อง login และมี CompanyProvider */}
+                <Route
+                    path="*"
+                    element={
+                        <CompanyProvider>
+                            <ProtectedRoute>
+                                <AppContent />
+                            </ProtectedRoute>
+                        </CompanyProvider>
+                    }
+                />
+            </Routes>
         </AuthProvider>
     );
 };

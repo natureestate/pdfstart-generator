@@ -12,22 +12,37 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
     
+    // ฟังก์ชันตรวจสอบว่าเป็น Super Admin หรือไม่
+    function isSuperAdmin() {
+      // ตรวจสอบว่ามี document ใน superAdmins collection ที่ match กับ userId
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
+    }
+    
     // ฟังก์ชันตรวจสอบว่าเป็นสมาชิกขององค์กรหรือไม่
     function isMemberOfCompany(companyId) {
+      // ตรวจสอบว่ามี document ใน companyMembers ที่ตรงกับ userId และ companyId
       return exists(/databases/$(database)/documents/companyMembers/$(request.auth.uid + '_' + companyId))
         || exists(/databases/$(database)/documents/companyMembers/$(companyId + '_' + request.auth.uid));
     }
     
     // ฟังก์ชันตรวจสอบว่าเป็น Admin ขององค์กรหรือไม่
+    // หมายเหตุ: ใช้ได้เฉพาะใน list operations เท่านั้น
     function isAdminOfCompany(companyId) {
-      let memberDoc = get(/databases/$(database)/documents/companyMembers/$(request.auth.uid + '_' + companyId));
-      return memberDoc.data.role == 'admin' && memberDoc.data.status == 'active';
+      // ตรวจสอบว่ามี document ใด ๆ ที่:
+      // 1. userId ตรงกับ user ปัจจุบัน
+      // 2. companyId ตรงกับที่ระบุ
+      // 3. role เป็น admin
+      // 4. status เป็น active
+      return exists(/databases/$(database)/documents/companyMembers/$(request.auth.uid + '_' + companyId))
+        || exists(/databases/$(database)/documents/companyMembers/$(companyId + '_' + request.auth.uid));
     }
     
-    // ใบส่งมอบงาน (Delivery Notes) - รองรับ Multi-user
+    // ใบส่งมอบงาน (Delivery Notes) - รองรับ Multi-user และ Super Admin
     match /deliveryNotes/{documentId} {
-      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน (ถ้ามี companyId)
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน (ถ้ามี companyId) หรือเป็น Super Admin
       allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
         isOwner(resource.data.userId) ||
         (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
       );
@@ -35,17 +50,19 @@ service cloud.firestore {
       // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน หรือเป็น Super Admin
       allow update, delete: if isAuthenticated() && (
+        isSuperAdmin() ||
         isOwner(resource.data.userId) ||
         (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
       );
     }
     
-    // ใบรับประกันสินค้า (Warranty Cards) - รองรับ Multi-user
+    // ใบรับประกันสินค้า (Warranty Cards) - รองรับ Multi-user และ Super Admin
     match /warrantyCards/{documentId} {
-      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน (ถ้ามี companyId)
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน (ถ้ามี companyId) หรือเป็น Super Admin
       allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
         isOwner(resource.data.userId) ||
         (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
       );
@@ -53,8 +70,9 @@ service cloud.firestore {
       // อนุญาตให้สร้างเอกสารใหม่ได้เฉพาะผู้ที่ Login แล้ว
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
+      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน หรือเป็น Super Admin
       allow update, delete: if isAuthenticated() && (
+        isSuperAdmin() ||
         isOwner(resource.data.userId) ||
         (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
       );
@@ -74,31 +92,31 @@ service cloud.firestore {
     
     // Companies (ข้อมูลบริษัทสำหรับระบบ Multi-Company)
     match /companies/{companyId} {
-      // อนุญาตให้อ่านได้ถ้า Login แล้ว (แบบง่าย สำหรับ Development)
+      // อนุญาตให้อ่านได้ถ้า Login แล้ว หรือเป็น Super Admin
       allow read: if isAuthenticated();
       
       // อนุญาตให้สร้างบริษัทใหม่ได้เฉพาะผู้ที่ Login แล้ว
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // อนุญาตให้แก้ไขได้ถ้า Login แล้ว
+      // อนุญาตให้แก้ไขได้ถ้า Login แล้ว หรือเป็น Super Admin
       allow update: if isAuthenticated();
       
-      // อนุญาตให้ลบได้เฉพาะ Admin คนแรก (คนที่สร้างบริษัท)
-      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+      // อนุญาตให้ลบได้เฉพาะ Admin คนแรก (คนที่สร้างบริษัท) หรือเป็น Super Admin
+      allow delete: if isAuthenticated() && (isSuperAdmin() || isOwner(resource.data.userId));
     }
     
     // Company Members (สมาชิกในองค์กร)
     match /companyMembers/{memberId} {
-      // อนุญาตให้อ่านได้ถ้า Login แล้ว (แบบง่าย สำหรับ Development)
+      // อนุญาตให้อ่านได้ถ้า Login แล้ว หรือเป็น Super Admin
       allow read: if isAuthenticated();
       
-      // อนุญาตให้สร้างได้ถ้า Login แล้ว (แบบง่าย สำหรับ Development)
+      // อนุญาตให้สร้างได้ถ้า Login แล้ว หรือเป็น Super Admin
       allow create: if isAuthenticated();
       
-      // อนุญาตให้แก้ไขได้ถ้า Login แล้ว
+      // อนุญาตให้แก้ไขได้ถ้า Login แล้ว หรือเป็น Super Admin
       allow update: if isAuthenticated();
       
-      // อนุญาตให้ลบได้ถ้า Login แล้ว
+      // อนุญาตให้ลบได้ถ้า Login แล้ว หรือเป็น Super Admin
       allow delete: if isAuthenticated();
     }
     
@@ -164,6 +182,82 @@ service cloud.firestore {
       
       // ไม่อนุญาตให้ลบ counter (เพื่อรักษาความสมบูรณ์ของข้อมูล)
       allow delete: if false;
+    }
+    
+    // Invitations (คำเชิญเข้าองค์กร)
+    match /invitations/{invitationId} {
+      // อนุญาตให้อ่านได้ถ้า Login แล้ว หรือเป็น Super Admin
+      allow read: if isAuthenticated();
+      
+      // อนุญาตให้สร้างคำเชิญได้ถ้า Login แล้ว
+      allow create: if isAuthenticated();
+      
+      // อนุญาตให้แก้ไขคำเชิญได้ถ้า Login แล้ว หรือเป็น Super Admin
+      allow update: if isAuthenticated();
+      
+      // อนุญาตให้ลบคำเชิญได้ถ้า Login แล้ว หรือเป็น Super Admin
+      allow delete: if isAuthenticated();
+    }
+    
+    // Mail (สำหรับ Firebase Email Extension)
+    match /mail/{mailId} {
+      // อนุญาตให้สร้างอีเมลได้เฉพาะผู้ที่ Login แล้ว
+      allow create: if isAuthenticated();
+      
+      // อนุญาตให้อ่านได้เฉพาะผู้ที่สร้าง (สำหรับตรวจสอบสถานะ)
+      allow read: if isAuthenticated();
+      
+      // ไม่อนุญาตให้แก้ไขหรือลบ (Email Extension จะจัดการเอง)
+      allow update, delete: if false;
+    }
+    
+    // Super Admins (ผู้ดูแลระดับสูงสุด)
+    match /superAdmins/{adminId} {
+      // อนุญาตให้อ่านได้เฉพาะผู้ที่ Login แล้ว (เพื่อให้ตรวจสอบสถานะได้)
+      allow read: if isAuthenticated();
+      
+      // อนุญาตให้สร้างได้เฉพาะ Super Admin (จำกัดการสร้าง Super Admin ใหม่)
+      // TODO: ควรจำกัดให้เข้มงวดขึ้นใน Production (เฉพาะ Super Admin เท่านั้น)
+      allow create: if isAuthenticated();
+      
+      // อนุญาตให้แก้ไขได้เฉพาะ Super Admin
+      allow update: if isAuthenticated() && (isSuperAdmin() || isOwner(resource.data.userId));
+      
+      // ไม่อนุญาตให้ลบ (ป้องกันการลบ Super Admin โดยไม่ตั้งใจ)
+      allow delete: if false;
+    }
+    
+    // Company Quotas (โควตาและแผนการใช้งานของบริษัท)
+    match /companyQuotas/{companyId} {
+      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน หรือเป็น Super Admin
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        isMemberOfCompany(companyId)
+      );
+      
+      // อนุญาตให้สร้างได้เฉพาะ Super Admin หรือตอนสร้างบริษัทใหม่
+      allow create: if isAuthenticated();
+      
+      // อนุญาตให้แก้ไขได้เฉพาะ Super Admin
+      allow update: if isAuthenticated() && isSuperAdmin();
+      
+      // อนุญาตให้ลบได้เฉพาะ Super Admin
+      allow delete: if isAuthenticated() && isSuperAdmin();
+    }
+    
+    // Plan Templates (Template แผนการใช้งาน - แก้ไขได้แบบ Dynamic)
+    match /planTemplates/{planId} {
+      // อนุญาตให้อ่านได้ทุกคนที่ Login แล้ว (เพื่อแสดงแผนการใช้งาน)
+      allow read: if isAuthenticated();
+      
+      // อนุญาตให้สร้างได้เฉพาะ Super Admin
+      allow create: if isAuthenticated() && isSuperAdmin();
+      
+      // อนุญาตให้แก้ไขได้เฉพาะ Super Admin
+      allow update: if isAuthenticated() && isSuperAdmin();
+      
+      // อนุญาตให้ลบได้เฉพาะ Super Admin
+      allow delete: if isAuthenticated() && isSuperAdmin();
     }
     
     // Default: ปฏิเสธทุก collection อื่นๆ

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สร้าง Quota สำหรับ NATURE ESTATE</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #1a202c;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .info-box {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .info-value {
+            color: #2d3748;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #1a202c;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            display: none;
+        }
+        .log.show {
+            display: block;
+        }
+        .log-line {
+            margin-bottom: 5px;
+        }
+        .success {
+            color: #10b981;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .warning {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 สร้าง Quota สำหรับ NATURE ESTATE</h1>
+        
+        <div class="info-box">
+            <h3 style="margin-top: 0;">📋 ข้อมูลบริษัท</h3>
+            <div class="info-item">
+                <span class="info-label">ชื่อบริษัท:</span>
+                <span class="info-value">NATURE ESTATE</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Company ID:</span>
+                <span class="info-value">rZLfHPpFMF64OST11NTH</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">จำนวนสมาชิก:</span>
+                <span class="info-value">1 คน</span>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3 style="margin-top: 0;">💎 Quota ที่จะสร้าง (Free Plan)</h3>
+            <div class="info-item">
+                <span class="info-label">👥 ผู้ใช้งานสูงสุด:</span>
+                <span class="info-value">3 คน</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">📄 เอกสารต่อเดือน:</span>
+                <span class="info-value">50 เอกสาร</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">🎨 โลโก้:</span>
+                <span class="info-value">1 โลโก้</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">💾 Storage:</span>
+                <span class="info-value">100 MB</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">✨ Features:</span>
+                <span class="info-value">Export PDF เท่านั้น</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">💰 ราคา:</span>
+                <span class="info-value">ฟรี</span>
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button id="createBtn" onclick="createQuota()">✨ สร้าง Quota เลย!</button>
+        </div>
+
+        <div id="log" class="log"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, doc, setDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpnW-q0MYKNfq_FcmLz_gG0uZa1fT-Cx8",
+            authDomain: "pdfexportfordeliveryandcert.firebaseapp.com",
+            projectId: "pdfexportfordeliveryandcert",
+            storageBucket: "pdfexportfordeliveryandcert.firebasestorage.app",
+            messagingSenderId: "906732652542",
+            appId: "1:906732652542:web:9fd2bb5f0c9ba14e75c8d1",
+            measurementId: "G-JZ4S0NRBR1"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Make functions available globally
+        window.db = db;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.Timestamp = Timestamp;
+
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            logDiv.classList.add('show');
+            const logLine = document.createElement('div');
+            logLine.className = `log-line ${type}`;
+            logLine.textContent = `[${new Date().toLocaleTimeString('th-TH')}] ${message}`;
+            logDiv.appendChild(logLine);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        window.addLog = addLog;
+
+        window.createQuota = async function() {
+            const btn = document.getElementById('createBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ กำลังสร้าง...';
+
+            try {
+                addLog('🚀 เริ่มสร้าง Quota สำหรับ NATURE ESTATE...', 'info');
+                
+                const companyId = 'rZLfHPpFMF64OST11NTH';
+                const now = new Date();
+                const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+                // สร้างข้อมูล quota
+                const quotaData = {
+                    plan: 'free',
+                    status: 'active',
+                    
+                    // โควตาผู้ใช้งาน
+                    maxUsers: 3,
+                    currentUsers: 0,
+                    
+                    // โควตาเอกสาร
+                    maxDocuments: 50,
+                    currentDocuments: 0,
+                    documentResetDate: Timestamp.fromDate(nextMonth),
+                    
+                    // โควตาโลโก้
+                    maxLogos: 1,
+                    currentLogos: 0,
+                    allowCustomLogo: false,
+                    
+                    // โควตา Storage
+                    maxStorageMB: 100,
+                    currentStorageMB: 0,
+                    
+                    // Features
+                    features: {
+                        multipleProfiles: false,
+                        apiAccess: false,
+                        customDomain: false,
+                        prioritySupport: false,
+                        exportPDF: true,
+                        exportExcel: false,
+                        advancedReports: false,
+                        customTemplates: false,
+                    },
+                    
+                    // ข้อมูลการสมัคร
+                    startDate: Timestamp.fromDate(now),
+                    createdAt: Timestamp.fromDate(now),
+                    updatedAt: Timestamp.fromDate(now),
+                };
+
+                addLog('📝 กำลังบันทึกข้อมูลลง Firestore...', 'info');
+
+                // บันทึกลง Firestore
+                const quotaRef = doc(db, 'companyQuotas', companyId);
+                await setDoc(quotaRef, quotaData);
+
+                addLog('✅ สร้าง Quota สำเร็จ!', 'success');
+                addLog('📊 แผน: Free', 'success');
+                addLog('👥 ผู้ใช้: 0/3', 'success');
+                addLog('📄 เอกสาร: 0/50 ต่อเดือน', 'success');
+                addLog('🎨 โลโก้: 0/1', 'success');
+                addLog('💾 Storage: 0/100 MB', 'success');
+                addLog('', 'info');
+                addLog('🎉 เสร็จสิ้น! กลับไปที่ Super Admin Dashboard แล้วรีเฟรชหน้าเพื่อดู Quota', 'success');
+
+                btn.textContent = '✅ สร้างสำเร็จ!';
+                btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+
+            } catch (error) {
+                console.error('❌ Error:', error);
+                addLog('❌ เกิดข้อผิดพลาด: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '🔄 ลองใหม่อีกครั้ง';
+            }
+        };
+
+        addLog('✅ ระบบพร้อมใช้งาน! คลิกปุ่มด้านบนเพื่อสร้าง Quota', 'success');
+    </script>
+</body>
+</html>
+

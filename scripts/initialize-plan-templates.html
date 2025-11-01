@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialize Plan Templates</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #1a202c;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+        .plan-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .plan-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+        }
+        .plan-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .plan-detail {
+            font-size: 13px;
+            color: #4a5568;
+            margin: 4px 0;
+        }
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        button {
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #1a202c;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            display: none;
+        }
+        .log.show {
+            display: block;
+        }
+        .log-line {
+            margin-bottom: 5px;
+        }
+        .success {
+            color: #10b981;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .warning {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Initialize Plan Templates</h1>
+        <p class="subtitle">สร้าง Template แผนการใช้งานแบบ Dynamic</p>
+        
+        <div class="info-box">
+            <h3>📋 Plan Templates ที่จะสร้าง</h3>
+            <div class="plan-grid">
+                <div class="plan-card">
+                    <div class="plan-name">🆓 Free</div>
+                    <div class="plan-detail">👥 3 Users</div>
+                    <div class="plan-detail">📄 50 Docs/month</div>
+                    <div class="plan-detail">🎨 1 Logo</div>
+                    <div class="plan-detail">💾 100 MB</div>
+                    <div class="plan-detail">💰 ฟรี</div>
+                </div>
+                
+                <div class="plan-card">
+                    <div class="plan-name">💼 Basic</div>
+                    <div class="plan-detail">👥 10 Users</div>
+                    <div class="plan-detail">📄 200 Docs/month</div>
+                    <div class="plan-detail">🎨 5 Logos</div>
+                    <div class="plan-detail">💾 500 MB</div>
+                    <div class="plan-detail">💰 299฿/เดือน</div>
+                </div>
+                
+                <div class="plan-card">
+                    <div class="plan-name">💎 Premium</div>
+                    <div class="plan-detail">👥 50 Users</div>
+                    <div class="plan-detail">📄 1,000 Docs/month</div>
+                    <div class="plan-detail">🎨 20 Logos</div>
+                    <div class="plan-detail">💾 2 GB</div>
+                    <div class="plan-detail">💰 999฿/เดือน</div>
+                </div>
+                
+                <div class="plan-card">
+                    <div class="plan-name">🏢 Enterprise</div>
+                    <div class="plan-detail">👥 ไม่จำกัด</div>
+                    <div class="plan-detail">📄 ไม่จำกัด</div>
+                    <div class="plan-detail">🎨 ไม่จำกัด</div>
+                    <div class="plan-detail">💾 ไม่จำกัด</div>
+                    <div class="plan-detail">💰 2,999฿/เดือน</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button id="initBtn" onclick="initializeTemplates()">✨ สร้าง Plan Templates</button>
+        </div>
+
+        <div id="log" class="log"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBy4f-C66l03f4-ODOO_aGyseaIDmDb7tk",
+            authDomain: "ecertonline-29a67.firebaseapp.com",
+            projectId: "ecertonline-29a67",
+            storageBucket: "ecertonline-29a67.firebasestorage.app",
+            messagingSenderId: "457246107908",
+            appId: "1:457246107908:web:1008539ce20637935c8851"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // รอให้ Firestore พร้อม
+        let isFirestoreReady = false;
+        let isAuthenticated = false;
+        
+        // ตรวจสอบสถานะ Authentication
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                isAuthenticated = true;
+                addLog(`✅ Login สำเร็จ: ${user.email}`, 'success');
+                addLog('🔗 เชื่อมต่อ Firebase สำเร็จ', 'success');
+                isFirestoreReady = true;
+            } else {
+                addLog('⚠️ กรุณา Login ก่อนใช้งาน', 'warning');
+                // Auto-login with Super Admin (ถ้ามี)
+                tryAutoLogin();
+            }
+        });
+        
+        async function tryAutoLogin() {
+            // ให้ผู้ใช้กรอก email/password
+            const email = prompt('กรุณากรอก Email ของ Super Admin:');
+            if (!email) {
+                addLog('❌ ยกเลิกการ Login', 'error');
+                return;
+            }
+            const password = prompt('กรุณากรอก Password:');
+            if (!password) {
+                addLog('❌ ยกเลิกการ Login', 'error');
+                return;
+            }
+            
+            try {
+                addLog('⏳ กำลัง Login...', 'info');
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                addLog(`❌ Login ล้มเหลว: ${error.message}`, 'error');
+            }
+        }
+
+        window.db = db;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.getDoc = getDoc;
+        window.Timestamp = Timestamp;
+
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            logDiv.classList.add('show');
+            const logLine = document.createElement('div');
+            logLine.className = `log-line ${type}`;
+            logLine.textContent = `[${new Date().toLocaleTimeString('th-TH')}] ${message}`;
+            logDiv.appendChild(logLine);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        window.addLog = addLog;
+
+        const DEFAULT_PLAN_TEMPLATES = {
+            free: {
+                id: 'free',
+                name: '🆓 Free',
+                description: 'สำหรับเริ่มต้นใช้งาน',
+                maxUsers: 3,
+                maxDocuments: 50,
+                maxLogos: 1,
+                maxStorageMB: 100,
+                allowCustomLogo: false,
+                features: {
+                    multipleProfiles: false,
+                    apiAccess: false,
+                    customDomain: false,
+                    prioritySupport: false,
+                    exportPDF: true,
+                    exportExcel: false,
+                    advancedReports: false,
+                    customTemplates: false,
+                },
+                price: 0,
+                currency: 'THB',
+                displayOrder: 1,
+                isActive: true,
+                isPopular: false,
+                color: '#9CA3AF',
+            },
+            basic: {
+                id: 'basic',
+                name: '💼 Basic',
+                description: 'สำหรับธุรกิจขนาดเล็ก',
+                maxUsers: 10,
+                maxDocuments: 200,
+                maxLogos: 5,
+                maxStorageMB: 500,
+                allowCustomLogo: true,
+                features: {
+                    multipleProfiles: true,
+                    apiAccess: false,
+                    customDomain: false,
+                    prioritySupport: false,
+                    exportPDF: true,
+                    exportExcel: true,
+                    advancedReports: false,
+                    customTemplates: true,
+                },
+                price: 299,
+                currency: 'THB',
+                displayOrder: 2,
+                isActive: true,
+                isPopular: false,
+                color: '#3B82F6',
+            },
+            premium: {
+                id: 'premium',
+                name: '💎 Premium',
+                description: 'สำหรับธุรกิจขนาดกลาง',
+                maxUsers: 50,
+                maxDocuments: 1000,
+                maxLogos: 20,
+                maxStorageMB: 2000,
+                allowCustomLogo: true,
+                features: {
+                    multipleProfiles: true,
+                    apiAccess: true,
+                    customDomain: false,
+                    prioritySupport: true,
+                    exportPDF: true,
+                    exportExcel: true,
+                    advancedReports: true,
+                    customTemplates: true,
+                },
+                price: 999,
+                currency: 'THB',
+                displayOrder: 3,
+                isActive: true,
+                isPopular: true,
+                color: '#F59E0B',
+            },
+            enterprise: {
+                id: 'enterprise',
+                name: '🏢 Enterprise',
+                description: 'สำหรับองค์กรขนาดใหญ่',
+                maxUsers: -1,
+                maxDocuments: -1,
+                maxLogos: -1,
+                maxStorageMB: -1,
+                allowCustomLogo: true,
+                features: {
+                    multipleProfiles: true,
+                    apiAccess: true,
+                    customDomain: true,
+                    prioritySupport: true,
+                    exportPDF: true,
+                    exportExcel: true,
+                    advancedReports: true,
+                    customTemplates: true,
+                },
+                price: 2999,
+                currency: 'THB',
+                displayOrder: 4,
+                isActive: true,
+                isPopular: false,
+                color: '#8B5CF6',
+            },
+        };
+
+        window.initializeTemplates = async function() {
+            const btn = document.getElementById('initBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ กำลังสร้าง...';
+
+            // ตรวจสอบว่า Login แล้วหรือยัง
+            if (!isAuthenticated) {
+                addLog('❌ กรุณา Login ก่อนใช้งาน', 'error');
+                btn.disabled = false;
+                btn.textContent = '✨ สร้าง Plan Templates';
+                return;
+            }
+            
+            // ตรวจสอบว่า Firestore พร้อมหรือยัง
+            if (!isFirestoreReady) {
+                addLog('⏳ กำลังเชื่อมต่อ Firebase... กรุณารอสักครู่', 'warning');
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+
+            try {
+                addLog('🚀 เริ่ม Initialize Plan Templates...', 'info');
+                
+                let created = 0;
+                let skipped = 0;
+
+                for (const [planId, template] of Object.entries(DEFAULT_PLAN_TEMPLATES)) {
+                    const templateRef = doc(db, 'planTemplates', planId);
+                    
+                    // ตรวจสอบว่ามีอยู่แล้วหรือไม่
+                    const templateSnap = await getDoc(templateRef);
+                    
+                    if (!templateSnap.exists()) {
+                        await setDoc(templateRef, {
+                            ...template,
+                            createdAt: Timestamp.now(),
+                            updatedAt: Timestamp.now(),
+                        });
+                        addLog(`✅ สร้าง template: ${template.name}`, 'success');
+                        created++;
+                    } else {
+                        addLog(`⏭️  ข้าม: ${template.name} (มีอยู่แล้ว)`, 'warning');
+                        skipped++;
+                    }
+                }
+
+                addLog('', 'info');
+                addLog(`📊 สรุป: สร้าง ${created} templates, ข้าม ${skipped} templates`, 'info');
+                addLog('✅ Initialize Plan Templates เสร็จสิ้น!', 'success');
+                addLog('', 'info');
+                addLog('🎉 ตอนนี้สามารถแก้ไข Plan Templates ได้แล้ว!', 'success');
+                addLog('📝 ไปที่ Firebase Console → Firestore → planTemplates', 'info');
+
+                btn.textContent = '✅ สร้างเสร็จสิ้น!';
+                btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+
+            } catch (error) {
+                console.error('❌ Error:', error);
+                addLog('❌ เกิดข้อผิดพลาด: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '🔄 ลองใหม่อีกครั้ง';
+            }
+        };
+
+        addLog('⏳ กำลังเชื่อมต่อ Firebase...', 'info');
+    </script>
+</body>
+</html>
+

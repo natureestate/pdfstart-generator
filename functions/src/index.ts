@@ -25,6 +25,22 @@ interface VerifyRecaptchaResponse {
     message?: string;
 }
 
+interface SendInvitationEmailRequest {
+    invitationId: string;
+    email: string;
+    companyName: string;
+    role: string;
+    invitedByName?: string;
+    invitedByEmail?: string;
+    token: string;
+    message?: string;
+}
+
+interface SendInvitationEmailResponse {
+    success: boolean;
+    message: string;
+}
+
 /**
  * Cloud Function สำหรับ verify reCAPTCHA token (v2 with App Check)
  * 
@@ -136,6 +152,231 @@ export const verifyRecaptcha = onCall(
             throw new HttpsError(
                 'internal',
                 'เกิดข้อผิดพลาดในการตรวจสอบ reCAPTCHA'
+            );
+        }
+    }
+);
+
+/**
+ * Cloud Function สำหรับส่งอีเมลเชิญเข้าองค์กร (v2)
+ * 
+ * @param request - { data: SendInvitationEmailRequest, auth: AuthData }
+ * @returns { success: boolean, message: string }
+ */
+export const sendInvitationEmail = onCall(
+    async (request): Promise<SendInvitationEmailResponse> => {
+        // ตรวจสอบว่า user login แล้วหรือไม่
+        if (!request.auth) {
+            throw new HttpsError(
+                'unauthenticated',
+                'กรุณา Login ก่อนส่งคำเชิญ'
+            );
+        }
+
+        const {
+            invitationId,
+            email,
+            companyName,
+            role,
+            invitedByName,
+            invitedByEmail,
+            token,
+            message,
+        } = request.data as SendInvitationEmailRequest;
+
+        // ตรวจสอบ input
+        if (!invitationId || !email || !companyName || !role || !token) {
+            throw new HttpsError(
+                'invalid-argument',
+                'ข้อมูลไม่ครบถ้วน'
+            );
+        }
+
+        try {
+            // สร้าง invitation link
+            const baseUrl = process.env.FUNCTIONS_EMULATOR
+                ? 'http://localhost:5173'
+                : 'https://your-app-domain.web.app'; // เปลี่ยนเป็น domain จริงของคุณ
+            
+            const invitationLink = `${baseUrl}/accept-invitation?token=${token}`;
+
+            // สร้างเนื้อหาอีเมล (HTML)
+            const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .content h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .invitation-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .invitation-box p {
+            margin: 5px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .button:hover {
+            background: #5568d3;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 คำเชิญเข้าร่วมองค์กร</h1>
+        </div>
+        <div class="content">
+            <h2>สวัสดีค่ะ/ครับ!</h2>
+            <p>คุณได้รับคำเชิญให้เข้าร่วมองค์กร <strong>${companyName}</strong></p>
+            
+            <div class="invitation-box">
+                <p><strong>📧 อีเมล:</strong> ${email}</p>
+                <p><strong>👤 บทบาท:</strong> ${role === 'admin' ? 'Admin (ผู้จัดการ)' : 'Member (สมาชิกทั่วไป)'}</p>
+                ${invitedByName ? `<p><strong>✉️ เชิญโดย:</strong> ${invitedByName}${invitedByEmail ? ` (${invitedByEmail})` : ''}</p>` : ''}
+            </div>
+            
+            ${message ? `
+            <div class="invitation-box">
+                <p><strong>💬 ข้อความจากผู้เชิญ:</strong></p>
+                <p>${message}</p>
+            </div>
+            ` : ''}
+            
+            <p>กรุณาคลิกปุ่มด้านล่างเพื่อยอมรับคำเชิญ:</p>
+            
+            <center>
+                <a href="${invitationLink}" class="button">ยอมรับคำเชิญ</a>
+            </center>
+            
+            <div class="warning">
+                ⚠️ <strong>หมายเหตุ:</strong> คำเชิญนี้จะหมดอายุใน 7 วัน<br>
+                หากคุณไม่ได้ขอคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้
+            </div>
+            
+            <p style="font-size: 12px; color: #666; margin-top: 20px;">
+                หากปุ่มไม่ทำงาน กรุณาคัดลอกลิงก์นี้ไปวางในเบราว์เซอร์:<br>
+                <a href="${invitationLink}" style="color: #667eea; word-break: break-all;">${invitationLink}</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>อีเมลนี้ส่งจากระบบจัดการเอกสารอัตโนมัติ</p>
+            <p>© ${new Date().getFullYear()} All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+            `;
+
+            // สร้างเนื้อหาอีเมล (Plain Text)
+            const emailText = `
+คำเชิญเข้าร่วมองค์กร
+
+สวัสดีค่ะ/ครับ!
+
+คุณได้รับคำเชิญให้เข้าร่วมองค์กร ${companyName}
+
+รายละเอียด:
+- อีเมล: ${email}
+- บทบาท: ${role === 'admin' ? 'Admin (ผู้จัดการ)' : 'Member (สมาชิกทั่วไป)'}
+${invitedByName ? `- เชิญโดย: ${invitedByName}${invitedByEmail ? ` (${invitedByEmail})` : ''}` : ''}
+
+${message ? `ข้อความจากผู้เชิญ:\n${message}\n` : ''}
+
+กรุณาคลิกลิงก์ด้านล่างเพื่อยอมรับคำเชิญ:
+${invitationLink}
+
+หมายเหตุ: คำเชิญนี้จะหมดอายุใน 7 วัน
+หากคุณไม่ได้ขอคำเชิญนี้ กรุณาเพิกเฉยต่ออีเมลนี้
+
+---
+อีเมลนี้ส่งจากระบบจัดการเอกสารอัตโนมัติ
+© ${new Date().getFullYear()} All rights reserved.
+            `;
+
+            // บันทึกข้อมูลอีเมลลง Firestore (สำหรับ Email Extension หรือ Custom Email Service)
+            await admin.firestore().collection('mail').add({
+                to: email,
+                message: {
+                    subject: `🎉 คำเชิญเข้าร่วมองค์กร ${companyName}`,
+                    text: emailText,
+                    html: emailHtml,
+                },
+                invitationId,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            console.log(`✅ ส่งอีเมลเชิญสำเร็จ: ${email} (Invitation ID: ${invitationId})`);
+
+            return {
+                success: true,
+                message: 'ส่งอีเมลเชิญสำเร็จ',
+            };
+
+        } catch (error) {
+            console.error('❌ ส่งอีเมลเชิญล้มเหลว:', error);
+            throw new HttpsError(
+                'internal',
+                'เกิดข้อผิดพลาดในการส่งอีเมลเชิญ'
             );
         }
     }

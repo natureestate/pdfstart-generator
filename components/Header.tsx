@@ -5,6 +5,8 @@ import { signOut, getLinkedProviders, linkWithEmailPassword, changePassword, sen
 import CompanySelector from './CompanySelector';
 import UserManagement from './UserManagement';
 import { checkIsAdmin } from '../services/companyMembers';
+import { getQuota } from '../services/quota';
+import { CompanyQuota } from '../types';
 
 const Header: React.FC = () => {
     const { user } = useAuth();
@@ -33,6 +35,11 @@ const Header: React.FC = () => {
     
     // Reset Password
     const [showResetPasswordLink, setShowResetPasswordLink] = useState(false);
+
+    // Quota Modal
+    const [showQuotaModal, setShowQuotaModal] = useState(false);
+    const [quota, setQuota] = useState<CompanyQuota | null>(null);
+    const [quotaLoading, setQuotaLoading] = useState(false);
 
     // ตรวจสอบว่ามี Password หรือไม่
     useEffect(() => {
@@ -198,6 +205,31 @@ const Header: React.FC = () => {
         }
     };
 
+    /**
+     * เปิด Modal Quota และโหลดข้อมูล
+     */
+    const handleShowQuota = async () => {
+        if (!currentCompany?.id) {
+            alert('❌ ไม่พบข้อมูลบริษัท');
+            return;
+        }
+
+        setShowQuotaModal(true);
+        setShowDropdown(false);
+        setShowMobileMenu(false);
+        setQuotaLoading(true);
+
+        try {
+            const quotaData = await getQuota(currentCompany.id);
+            setQuota(quotaData);
+        } catch (error) {
+            console.error('❌ โหลดข้อมูล Quota ล้มเหลว:', error);
+            alert('❌ ไม่สามารถโหลดข้อมูล Quota ได้');
+        } finally {
+            setQuotaLoading(false);
+        }
+    };
+
     return (
         <>
             <header className="bg-white shadow-md sticky top-0 z-30">
@@ -311,6 +343,19 @@ const Header: React.FC = () => {
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                                                         </svg>
                                                         <span className="font-medium">🔑 เปลี่ยนรหัสผ่าน</span>
+                                                    </button>
+                                                )}
+
+                                                {/* ปุ่มดูโควตา */}
+                                                {currentCompany && (
+                                                    <button
+                                                        onClick={handleShowQuota}
+                                                        className="w-full px-4 py-3 text-left text-sm text-purple-600 hover:bg-purple-50 transition-colors duration-200 flex items-center gap-3 border-b border-gray-200"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                                        </svg>
+                                                        <span className="font-medium">📊 ดูโควตา</span>
                                                     </button>
                                                 )}
 
@@ -508,6 +553,21 @@ const Header: React.FC = () => {
                                             </svg>
                                         </div>
                                         <span>🔑 เปลี่ยนรหัสผ่าน</span>
+                                    </button>
+                                )}
+
+                                {/* ปุ่มดูโควตา */}
+                                {currentCompany && (
+                                    <button
+                                        onClick={handleShowQuota}
+                                        className="w-full px-4 py-3.5 text-left text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-all duration-200 flex items-center gap-3 mb-2 shadow-sm hover:shadow"
+                                    >
+                                        <div className="w-9 h-9 rounded-lg bg-purple-200 flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                        </div>
+                                        <span>📊 ดูโควตา</span>
                                     </button>
                                 )}
 
@@ -804,6 +864,196 @@ const Header: React.FC = () => {
                                 </p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Quota Modal - แสดงข้อมูล Quota */}
+            {showQuotaModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-2xl font-bold text-gray-800">
+                                📊 ข้อมูลโควตาของบริษัท
+                            </h3>
+                            <button
+                                onClick={() => setShowQuotaModal(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Loading State */}
+                        {quotaLoading ? (
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <svg className="animate-spin h-12 w-12 text-purple-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+                            </div>
+                        ) : quota ? (
+                            <div className="space-y-6">
+                                {/* ข้อมูลบริษัท */}
+                                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
+                                    <p className="text-sm text-purple-600 font-medium mb-1">บริษัท</p>
+                                    <p className="text-lg font-bold text-gray-800">{currentCompany?.name}</p>
+                                </div>
+
+                                {/* แผนปัจจุบัน */}
+                                <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-amber-600 font-medium mb-1">แผนปัจจุบัน</p>
+                                            <p className="text-2xl font-bold text-gray-800 capitalize">{quota.plan}</p>
+                                        </div>
+                                        <div className={`px-4 py-2 rounded-full text-sm font-bold ${
+                                            quota.status === 'active' ? 'bg-green-100 text-green-700' :
+                                            quota.status === 'trial' ? 'bg-blue-100 text-blue-700' :
+                                            quota.status === 'expired' ? 'bg-red-100 text-red-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {quota.status === 'active' ? '✅ Active' :
+                                             quota.status === 'trial' ? '🔄 Trial' :
+                                             quota.status === 'expired' ? '❌ Expired' :
+                                             '⏸️ Suspended'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* โควตาการใช้งาน */}
+                                <div className="space-y-4">
+                                    <h4 className="text-lg font-bold text-gray-800">📈 การใช้งาน</h4>
+
+                                    {/* ผู้ใช้ */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium text-gray-600">👥 ผู้ใช้</span>
+                                            <span className={`text-sm font-bold ${quota.currentUsers >= quota.maxUsers && quota.maxUsers !== -1 ? 'text-red-600' : 'text-gray-800'}`}>
+                                                {quota.currentUsers} / {quota.maxUsers === -1 ? '∞' : quota.maxUsers}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div 
+                                                className={`h-2.5 rounded-full ${quota.currentUsers >= quota.maxUsers && quota.maxUsers !== -1 ? 'bg-red-500' : 'bg-blue-500'}`}
+                                                style={{ width: quota.maxUsers === -1 ? '0%' : `${Math.min((quota.currentUsers / quota.maxUsers) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    {/* เอกสาร/เดือน */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium text-gray-600">📄 เอกสาร/เดือน</span>
+                                            <span className={`text-sm font-bold ${quota.currentDocuments >= quota.maxDocuments && quota.maxDocuments !== -1 ? 'text-red-600' : 'text-gray-800'}`}>
+                                                {quota.currentDocuments} / {quota.maxDocuments === -1 ? '∞' : quota.maxDocuments}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div 
+                                                className={`h-2.5 rounded-full ${quota.currentDocuments >= quota.maxDocuments && quota.maxDocuments !== -1 ? 'bg-red-500' : 'bg-green-500'}`}
+                                                style={{ width: quota.maxDocuments === -1 ? '0%' : `${Math.min((quota.currentDocuments / quota.maxDocuments) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    {/* โลโก้ */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium text-gray-600">🎨 โลโก้</span>
+                                            <span className={`text-sm font-bold ${quota.currentLogos >= quota.maxLogos && quota.maxLogos !== -1 ? 'text-red-600' : 'text-gray-800'}`}>
+                                                {quota.currentLogos} / {quota.maxLogos === -1 ? '∞' : quota.maxLogos}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div 
+                                                className={`h-2.5 rounded-full ${quota.currentLogos >= quota.maxLogos && quota.maxLogos !== -1 ? 'bg-red-500' : 'bg-purple-500'}`}
+                                                style={{ width: quota.maxLogos === -1 ? '0%' : `${Math.min((quota.currentLogos / quota.maxLogos) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    {/* Storage */}
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium text-gray-600">💾 พื้นที่จัดเก็บ</span>
+                                            <span className={`text-sm font-bold ${quota.currentStorageMB >= quota.maxStorageMB && quota.maxStorageMB !== -1 ? 'text-red-600' : 'text-gray-800'}`}>
+                                                {quota.currentStorageMB.toFixed(1)} MB / {quota.maxStorageMB === -1 ? '∞' : `${quota.maxStorageMB} MB`}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div 
+                                                className={`h-2.5 rounded-full ${quota.currentStorageMB >= quota.maxStorageMB && quota.maxStorageMB !== -1 ? 'bg-red-500' : 'bg-indigo-500'}`}
+                                                style={{ width: quota.maxStorageMB === -1 ? '0%' : `${Math.min((quota.currentStorageMB / quota.maxStorageMB) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Features */}
+                                <div className="space-y-3">
+                                    <h4 className="text-lg font-bold text-gray-800">✨ ฟีเจอร์</h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {quota.features.multipleProfiles && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> Multiple Profiles
+                                            </div>
+                                        )}
+                                        {quota.features.apiAccess && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> API Access
+                                            </div>
+                                        )}
+                                        {quota.features.customDomain && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> Custom Domain
+                                            </div>
+                                        )}
+                                        {quota.features.prioritySupport && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> Priority Support
+                                            </div>
+                                        )}
+                                        {quota.features.exportPDF && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> Export PDF
+                                            </div>
+                                        )}
+                                        {quota.features.exportExcel && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> Export Excel
+                                            </div>
+                                        )}
+                                        {quota.features.advancedReports && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> Advanced Reports
+                                            </div>
+                                        )}
+                                        {quota.features.customTemplates && (
+                                            <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <span className="text-green-500">✅</span> Custom Templates
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* ปุ่มปิด */}
+                                <button
+                                    onClick={() => setShowQuotaModal(false)}
+                                    className="w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-purple-700 transition-all"
+                                >
+                                    ปิด
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="text-center py-12">
+                                <p className="text-gray-600">ไม่พบข้อมูลโควตา</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

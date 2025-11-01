@@ -19,6 +19,7 @@ import {
 } from 'firebase/firestore';
 import { Company } from '../types';
 import { addFirstAdmin, getUserMemberships, updateMemberCount } from './companyMembers';
+import { createQuota } from './quota';
 
 // Collection name
 const COMPANIES_COLLECTION = 'companies';
@@ -73,6 +74,14 @@ export const createCompany = async (
             currentUser.phoneNumber || undefined,
             currentUser.displayName || undefined
         );
+
+        // สร้าง quota เริ่มต้น (Free Plan) สำหรับบริษัทใหม่
+        try {
+            await createQuota(companyId, 'free');
+            console.log('✅ สร้าง quota เริ่มต้นสำเร็จ:', companyId);
+        } catch (quotaError) {
+            console.warn('⚠️ สร้าง quota ล้มเหลว (ไม่กระทบการสร้างบริษัท):', quotaError);
+        }
 
         console.log('✅ สร้างบริษัทสำเร็จ:', companyId, '(Admin:', currentUser.uid, ')');
         return companyId;

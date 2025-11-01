@@ -14,6 +14,94 @@ export type UserRole = 'admin' | 'member';
 // สถานะของสมาชิกในองค์กร
 export type MemberStatus = 'active' | 'pending' | 'inactive';
 
+// บทบาทระดับระบบ (System-wide roles)
+export type SystemRole = 'superadmin' | 'user';
+
+// แผนการใช้งาน (Subscription Plan)
+export type SubscriptionPlan = 'free' | 'basic' | 'premium' | 'enterprise';
+
+// สถานะของแผนการใช้งาน
+export type SubscriptionStatus = 'active' | 'expired' | 'suspended' | 'trial';
+
+// โควตาการใช้งานของบริษัท
+export interface CompanyQuota {
+    // แผนการใช้งาน
+    plan: SubscriptionPlan;                  // แผนที่ใช้งานอยู่
+    status: SubscriptionStatus;              // สถานะแผน
+    
+    // โควตาผู้ใช้งาน
+    maxUsers: number;                        // จำนวนผู้ใช้งานสูงสุด (-1 = ไม่จำกัด)
+    currentUsers: number;                    // จำนวนผู้ใช้งานปัจจุบัน
+    
+    // โควตาเอกสาร
+    maxDocuments: number;                    // จำนวนเอกสารสูงสุดต่อเดือน (-1 = ไม่จำกัด)
+    currentDocuments: number;                // จำนวนเอกสารที่สร้างในเดือนนี้
+    documentResetDate?: Date;                // วันที่รีเซ็ตจำนวนเอกสาร (วันแรกของเดือนถัดไป)
+    
+    // โควตาโลโก้
+    maxLogos: number;                        // จำนวนโลโก้สูงสุด (-1 = ไม่จำกัด)
+    currentLogos: number;                    // จำนวนโลโก้ปัจจุบัน
+    allowCustomLogo: boolean;                // อนุญาตให้ใช้โลโก้กำหนดเองหรือไม่
+    
+    // โควตา Storage
+    maxStorageMB: number;                    // พื้นที่เก็บข้อมูลสูงสุด (MB) (-1 = ไม่จำกัด)
+    currentStorageMB: number;                // พื้นที่ที่ใช้ไปแล้ว (MB)
+    
+    // Features พิเศษ
+    features: {
+        multipleProfiles: boolean;           // ใช้ Profile หลายอันได้หรือไม่
+        apiAccess: boolean;                  // เข้าถึง API ได้หรือไม่
+        customDomain: boolean;               // ใช้ Custom Domain ได้หรือไม่
+        prioritySupport: boolean;            // Support แบบพิเศษ
+        exportPDF: boolean;                  // Export PDF ได้หรือไม่
+        exportExcel: boolean;                // Export Excel ได้หรือไม่
+        advancedReports: boolean;            // รายงานขั้นสูง
+        customTemplates: boolean;            // Template กำหนดเอง
+    };
+    
+    // ข้อมูลการสมัคร
+    startDate: Date;                         // วันที่เริ่มใช้งานแผนปัจจุบัน
+    endDate?: Date;                          // วันหมดอายุ (ถ้าเป็น subscription แบบจ่ายเงิน)
+    trialEndDate?: Date;                     // วันหมดอายุทดลองใช้
+    
+    // Payment
+    lastPaymentDate?: Date;                  // วันที่จ่ายเงินล่าสุด
+    nextPaymentDate?: Date;                  // วันที่จ่ายเงินครั้งถัดไป
+    paymentAmount?: number;                  // จำนวนเงินที่ต้องจ่าย
+    currency?: string;                       // สกุลเงิน (THB, USD)
+    
+    // Metadata
+    createdAt?: Date;
+    updatedAt?: Date;
+    updatedBy?: string;                      // User ID ของผู้อัปเดต
+    notes?: string;                          // หมายเหตุ
+}
+
+// ข้อมูล Super Admin
+export interface SuperAdmin {
+    id?: string;                    // Document ID
+    userId: string;                 // Firebase Auth UID
+    email: string;                  // อีเมล
+    displayName?: string;           // ชื่อแสดง
+    role: SystemRole;               // บทบาทระดับระบบ
+    permissions: string[];          // สิทธิ์พิเศษ (เช่น 'view_all', 'manage_users', 'manage_companies')
+    createdBy?: string;             // User ID ของผู้สร้าง
+    createdAt?: Date;
+    updatedAt?: Date;
+    lastLoginAt?: Date;             // Login ล่าสุด
+}
+
+// สถิติภาพรวมระบบ
+export interface SystemStats {
+    totalCompanies: number;         // จำนวนบริษัททั้งหมด
+    totalUsers: number;             // จำนวน users ทั้งหมด
+    totalMembers: number;           // จำนวนสมาชิกทั้งหมด
+    totalInvitations: number;       // จำนวนคำเชิญทั้งหมด
+    totalDocuments: number;         // จำนวนเอกสารทั้งหมด
+    activeUsers: number;            // จำนวน active users
+    pendingInvitations: number;     // จำนวนคำเชิญที่รอ
+}
+
 // ข้อมูลสมาชิกในองค์กร
 export interface CompanyMember {
     id?: string;                // Document ID
@@ -40,6 +128,11 @@ export interface Company {
     logoType?: LogoType;       // ประเภทโลโก้
     defaultLogoUrl?: string | null;  // โลโก้ default ของแต่ละองค์กร (URL จาก Storage)
     memberCount?: number;      // จำนวนสมาชิกในองค์กร
+    
+    // Quota และ Subscription
+    quotaId?: string;          // ID ของ quota document (reference to companyQuotas collection)
+    quota?: CompanyQuota;      // ข้อมูล quota (ถ้าโหลดมาด้วย)
+    
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -150,6 +243,29 @@ export interface Customer {
     // Metadata
     lastUsedAt?: Date;             // ใช้ล่าสุดเมื่อไร (สำหรับ sorting)
     usageCount?: number;           // จำนวนครั้งที่ใช้ (สำหรับ suggestion)
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+// สถานะของคำเชิญ
+export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired';
+
+// ข้อมูลคำเชิญเข้าองค์กร
+export interface Invitation {
+    id?: string;                   // Document ID
+    companyId: string;             // ID ขององค์กรที่เชิญ
+    companyName: string;           // ชื่อองค์กร (สำหรับแสดงในอีเมล)
+    email: string;                 // อีเมลของผู้ถูกเชิญ
+    role: UserRole;                // บทบาทที่จะได้รับ: admin หรือ member
+    status: InvitationStatus;      // สถานะคำเชิญ
+    invitedBy: string;             // User ID ของผู้เชิญ
+    invitedByName?: string;        // ชื่อของผู้เชิญ (สำหรับแสดงในอีเมล)
+    invitedByEmail?: string;       // อีเมลของผู้เชิญ
+    token: string;                 // Token สำหรับยืนยันคำเชิญ (unique)
+    expiresAt: Date;               // วันหมดอายุของคำเชิญ (เช่น 7 วัน)
+    acceptedAt?: Date;             // วันที่ยอมรับคำเชิญ
+    acceptedBy?: string;           // User ID ของผู้ยอมรับ (ถ้ามี)
+    message?: string;              // ข้อความจากผู้เชิญ (optional)
     createdAt?: Date;
     updatedAt?: Date;
 }

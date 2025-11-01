@@ -15,7 +15,8 @@
     "preview": "vite preview --port 4173",
     "preview:host": "vite preview --port 4173 --host",
     "clean": "rm -rf dist node_modules/.vite",
-    "setup": "npm install && npm run clean"
+    "setup": "npm install && npm run clean",
+    "migrate:quotas": "tsx scripts/create-default-quotas.ts"
   },
   "dependencies": {
     "firebase": "^12.3.0",
@@ -23,7 +24,8 @@
     "jspdf": "^3.0.3",
     "primereact": "^10.9.7",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.5"
   },
   "devDependencies": {
     "@types/node": "^22.18.9",
@@ -31,6 +33,7 @@
     "firebase-admin": "^13.5.0",
     "shadcn": "^3.4.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
