@@ -69,7 +69,7 @@ const DEFAULT_PLAN_TEMPLATES: Record<SubscriptionPlan, Omit<PlanTemplate, 'creat
     free: {
         id: 'free',
         name: '🆓 Free',
-        description: 'สำหรับเริ่มต้นใช้งาน',
+        description: 'สำหรับเริ่มต้นใช้งาน (1 องค์กร)',
         maxUsers: 3,
         maxDocuments: 50,
         maxLogos: 1,
@@ -80,7 +80,7 @@ const DEFAULT_PLAN_TEMPLATES: Record<SubscriptionPlan, Omit<PlanTemplate, 'creat
             apiAccess: false,
             customDomain: false,
             prioritySupport: false,
-            exportPDF: true,
+            exportPDF: false,  // ❌ Free plan ไม่สามารถ Export PDF
             exportExcel: false,
             advancedReports: false,
             customTemplates: false,

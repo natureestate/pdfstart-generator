@@ -42,7 +42,7 @@ const DEFAULT_QUOTAS: Record<SubscriptionPlan, Omit<CompanyQuota, 'startDate' | 
             apiAccess: false,
             customDomain: false,
             prioritySupport: false,
-            exportPDF: true,
+            exportPDF: false,            // ❌ Free plan ไม่สามารถ Export PDF
             exportExcel: false,
             advancedReports: false,
             customTemplates: false,

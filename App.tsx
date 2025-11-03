@@ -161,6 +161,23 @@ const AppContent: React.FC = () => {
     const handleExportPdf = useCallback(async () => {
         if (!printableAreaRef.current) return;
         
+        // ตรวจสอบ quota ก่อน export
+        if (currentCompany?.id) {
+            try {
+                const { getQuota } = await import('./services/quota');
+                const quota = await getQuota(currentCompany.id);
+                
+                // ตรวจสอบว่า Free plan สามารถ export PDF ได้หรือไม่
+                if (!quota.features.exportPDF) {
+                    showToast('❌ Free plan ไม่สามารถ Export PDF ได้ กรุณาอัพเกรดแผน', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Failed to check quota:', error);
+                // ถ้าเช็ค quota ไม่ได้ ให้ดำเนินการต่อ (เพื่อไม่ให้ระบบหยุดทำงาน)
+            }
+        }
+        
         setIsLoading(true);
         showToast('กำลังสร้าง PDF...', 'info');
 
@@ -177,7 +194,7 @@ const AppContent: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [activeTab, deliveryData.docNumber, warrantyData.serialNumber]);
+    }, [activeTab, deliveryData.docNumber, warrantyData.serialNumber, currentCompany]);
 
     // ฟังก์ชันโหลดเอกสารจาก History
     const handleLoadDocument = useCallback((doc: DeliveryNoteDocument | WarrantyDocument) => {
