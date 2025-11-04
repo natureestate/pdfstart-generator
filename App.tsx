@@ -131,6 +131,53 @@ const AppContent: React.FC = () => {
         }
     }, [currentCompany]);
 
+    // 🔥 Sync logo จาก currentCompany เมื่อเปลี่ยนบริษัท
+    useEffect(() => {
+        const loadCompanyLogo = async () => {
+            if (currentCompany) {
+                console.log('🎨 [App] Loading company logo:', {
+                    logoUrl: currentCompany.logoUrl,
+                    logoType: currentCompany.logoType,
+                    defaultLogoUrl: currentCompany.defaultLogoUrl
+                });
+
+                // ถ้าบริษัทมี logo ที่อัปโหลดไว้ ให้โหลดมาใช้
+                if (currentCompany.logoUrl && currentCompany.logoType === 'uploaded') {
+                    try {
+                        // แปลง Storage URL เป็น Base64 เพื่อหลีกเลี่ยงปัญหา CORS
+                        const { convertStorageUrlToBase64 } = await import('./services/logoStorage');
+                        const base64Logo = await convertStorageUrlToBase64(currentCompany.logoUrl);
+                        
+                        if (base64Logo) {
+                            console.log('✅ [App] โหลด logo จาก Storage สำเร็จ');
+                            setSharedLogo(base64Logo);
+                            setSharedLogoUrl(currentCompany.logoUrl);
+                            setSharedLogoType('uploaded');
+                        } else {
+                            console.warn('⚠️  [App] แปลง logo เป็น Base64 ไม่สำเร็จ, ใช้ default logo');
+                            setSharedLogo(null);
+                            setSharedLogoUrl(null);
+                            setSharedLogoType('default');
+                        }
+                    } catch (error) {
+                        console.error('❌ [App] โหลด logo ล้มเหลว:', error);
+                        setSharedLogo(null);
+                        setSharedLogoUrl(null);
+                        setSharedLogoType('default');
+                    }
+                } else {
+                    // ถ้าไม่มี logo หรือใช้ default ให้รีเซ็ตเป็น default
+                    console.log('📝 [App] ใช้ default logo');
+                    setSharedLogo(null);
+                    setSharedLogoUrl(null);
+                    setSharedLogoType('default');
+                }
+            }
+        };
+
+        loadCompanyLogo();
+    }, [currentCompany]);
+
     /**
      * ตั้งค่า default logo ของ company
      */
