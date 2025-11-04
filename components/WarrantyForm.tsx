@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { WarrantyData, LogoType } from '../types';
 import { formatDateForInput } from '../utils/dateUtils';
-import LogoManager from './LogoManager';
 import CompanyProfileSelector from './CompanyProfileSelector';
 import ServiceTemplateSelector from './ServiceTemplateSelector';
 import CustomerSelector from './CustomerSelector';
@@ -133,64 +132,6 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({
     return (
         <div className="space-y-8 pt-4">
              <div className="space-y-6">
-                <FormDivider title="ข้อมูลบริษัท" />
-                <div className="space-y-4">
-                     {/* ใช้ LogoManager component แทนการจัดการโลโก้เอง */}
-                     <LogoManager
-                        currentLogo={sharedLogo !== undefined ? sharedLogo : data.logo}
-                        logoUrl={sharedLogoUrl !== undefined ? sharedLogoUrl : data.logoUrl}
-                        logoType={sharedLogoType || data.logoType || 'default'}
-                        companyDefaultLogoUrl={companyDefaultLogoUrl}
-                        onChange={handleLogoChange}
-                        onSetDefaultLogo={onSetDefaultLogo}
-                        showLabel={true}
-                        label="โลโก้บริษัท"
-                     />
-                    
-                    {/* Company Profile Selector สำหรับข้อมูลบริษัท */}
-                    <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="block text-sm font-medium text-slate-700">ข้อมูลบริษัท</label>
-                            <button
-                                type="button"
-                                onClick={() => setShowCompanySelector(!showCompanySelector)}
-                                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                            >
-                                {showCompanySelector ? 'ซ่อน' : 'เลือกจากที่บันทึกไว้'}
-                            </button>
-                        </div>
-                        {showCompanySelector && (
-                            <CompanyProfileSelector
-                                type="sender"
-                                onSelect={(profile) => {
-                                    handleDataChange('companyName', profile.companyName);
-                                    handleDataChange('companyAddress', profile.address);
-                                    setShowCompanySelector(false);
-                                }}
-                            />
-                        )}
-                    </div>
-
-                    <div>
-                        <label htmlFor="companyName" className="block text-sm font-medium text-slate-700">ชื่อบริษัท</label>
-                        <input type="text" id="companyName" value={data.companyName} onChange={(e) => handleDataChange('companyName', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
-                    </div>
-                    <div>
-                        <label htmlFor="companyAddress" className="block text-sm font-medium text-slate-700">ที่อยู่</label>
-                        <textarea id="companyAddress" value={data.companyAddress} onChange={(e) => handleDataChange('companyAddress', e.target.value)} rows={2} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="companyPhone" className="block text-sm font-medium text-slate-700">โทรศัพท์</label>
-                            <input type="tel" id="companyPhone" value={data.companyPhone} onChange={(e) => handleDataChange('companyPhone', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" placeholder="เช่น 02-xxx-xxxx" />
-                        </div>
-                        <div>
-                            <label htmlFor="companyEmail" className="block text-sm font-medium text-slate-700">อีเมล/เว็บไซต์</label>
-                            <input type="text" id="companyEmail" value={data.companyEmail} onChange={(e) => handleDataChange('companyEmail', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" placeholder="เช่น info@company.com" />
-                        </div>
-                    </div>
-                </div>
-            
                 <FormDivider title="ข้อมูลลูกค้า/โครงการ" />
                 <div className="space-y-4">
                     {/* CustomerSelector - ระบบจัดการลูกค้าแบบครบวงจร */}

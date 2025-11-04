@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Customer, getCustomers, saveCustomer, deleteCustomer, updateCustomerUsage, searchCustomers, getRecentCustomers } from '../services/customers';
+import { Customer, getCustomers, saveCustomer, updateCustomer, deleteCustomer, updateCustomerUsage, searchCustomers, getRecentCustomers } from '../services/customers';
 import { useCompany } from '../contexts/CompanyContext';
+import { migrateCustomersLastUsedAt } from '../services/customerMigration';
 
 interface CustomerSelectorProps {
     label?: string;
@@ -25,6 +26,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     const [recentCustomers, setRecentCustomers] = useState<Customer[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -37,12 +39,27 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
         address: '',
         projectName: '',
     });
+    
+    // State สำหรับแก้ไขลูกค้า
+    const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
-    // โหลดข้อมูลลูกค้า
+    // โหลดข้อมูลลูกค้า และ migrate ถ้าจำเป็น
     useEffect(() => {
         if (isModalOpen && currentCompany?.id) {
-            loadCustomers();
-            loadRecentCustomers();
+            const loadData = async () => {
+                // Migrate ก่อน (ถ้ามีข้อมูลเก่า)
+                try {
+                    await migrateCustomersLastUsedAt(currentCompany.id);
+                } catch (error) {
+                    console.warn('⚠️ Migration warning (safe to ignore):', error);
+                }
+                
+                // จากนั้นโหลดข้อมูล
+                await loadCustomers();
+                await loadRecentCustomers();
+            };
+            
+            loadData();
         }
     }, [isModalOpen, currentCompany]);
 
@@ -154,6 +171,44 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
         });
         
         setIsSaveModalOpen(true);
+    };
+    
+    // เปิด modal แก้ไขลูกค้า
+    const handleEditCustomer = (customer: Customer) => {
+        setEditingCustomer(customer);
+        setIsEditModalOpen(true);
+    };
+    
+    // บันทึกการแก้ไขลูกค้า
+    const handleUpdateCustomer = async () => {
+        if (!editingCustomer?.id) return;
+        
+        if (!editingCustomer.customerName || !editingCustomer.phone) {
+            alert('กรุณากรอกชื่อลูกค้าและเบอร์โทรศัพท์');
+            return;
+        }
+        
+        setIsSaving(true);
+        try {
+            await updateCustomer(editingCustomer.id, {
+                customerName: editingCustomer.customerName,
+                customerType: editingCustomer.customerType,
+                phone: editingCustomer.phone,
+                address: editingCustomer.address,
+                projectName: editingCustomer.projectName,
+            });
+            
+            await loadCustomers();
+            setIsEditModalOpen(false);
+            setEditingCustomer(null);
+            
+            alert('✅ อัปเดตข้อมูลลูกค้าสำเร็จ!');
+        } catch (error) {
+            console.error('Failed to update customer:', error);
+            alert('❌ ไม่สามารถอัปเดตข้อมูลลูกค้าได้');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDeleteCustomer = async (id: string, event: React.MouseEvent) => {
@@ -306,16 +361,30 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                                             onClick={() => handleSelectCustomer(customer)}
                                             className="relative p-3 bg-gray-50 border border-gray-200 rounded-md hover:border-indigo-400 hover:bg-indigo-50 cursor-pointer transition-all group"
                                         >
-                                            {/* Delete Button */}
-                                            <button
-                                                onClick={(e) => handleDeleteCustomer(customer.id!, e)}
-                                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                                title="ลบ"
-                                            >
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
+                                            {/* Edit and Delete Buttons */}
+                                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditCustomer(customer);
+                                                    }}
+                                                    className="p-1 bg-amber-500 text-white rounded-full hover:bg-amber-600"
+                                                    title="แก้ไข"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => handleDeleteCustomer(customer.id!, e)}
+                                                    className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                                                    title="ลบ"
+                                                >
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
 
                                             <div>
                                                 <div className="flex items-start justify-between pr-6">
@@ -359,7 +428,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                         </div>
 
                         <div className="mt-4 text-xs text-gray-500 text-center">
-                            💡 คลิกเพื่อเลือกลูกค้า • Hover เพื่อลบ
+                            💡 คลิกเพื่อเลือกลูกค้า • Hover เพื่อแก้ไข/ลบ
                         </div>
                     </div>
                 </div>
@@ -511,6 +580,112 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-green-300"
                             >
                                 {isSaving ? 'กำลังบันทึก...' : '💾 บันทึก'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Modal แก้ไขลูกค้า */}
+            {isEditModalOpen && editingCustomer && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">✏️ แก้ไขข้อมูลลูกค้า</h2>
+                        
+                        <div className="space-y-4">
+                            {/* ประเภทลูกค้า */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    ประเภทลูกค้า
+                                </label>
+                                <select
+                                    value={editingCustomer.customerType}
+                                    onChange={(e) => setEditingCustomer(prev => prev ? ({ ...prev, customerType: e.target.value as 'individual' | 'company' }) : null)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                >
+                                    <option value="individual">👤 บุคคล</option>
+                                    <option value="company">🏢 นิติบุคคล</option>
+                                </select>
+                            </div>
+
+                            {/* ชื่อลูกค้า */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    ชื่อลูกค้า <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingCustomer.customerName}
+                                    onChange={(e) => setEditingCustomer(prev => prev ? ({ ...prev, customerName: e.target.value }) : null)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    placeholder="เช่น คุณสมชาย ใจดี"
+                                    required
+                                />
+                            </div>
+
+                            {/* เบอร์โทร */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    เบอร์โทรศัพท์ <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="tel"
+                                    value={editingCustomer.phone}
+                                    onChange={(e) => setEditingCustomer(prev => prev ? ({ ...prev, phone: e.target.value }) : null)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    placeholder="0812345678"
+                                    required
+                                />
+                            </div>
+
+                            {/* ชื่อโครงการ */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    ชื่อโครงการ
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editingCustomer.projectName || ''}
+                                    onChange={(e) => setEditingCustomer(prev => prev ? ({ ...prev, projectName: e.target.value }) : null)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    placeholder="เช่น บ้านสวยใจกลางเมือง"
+                                />
+                            </div>
+
+                            {/* ที่อยู่ */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    ที่อยู่
+                                </label>
+                                <textarea
+                                    value={editingCustomer.address || ''}
+                                    onChange={(e) => setEditingCustomer(prev => prev ? ({ ...prev, address: e.target.value }) : null)}
+                                    rows={3}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    placeholder="เช่น 123 หมู่ 5 ตำบลแวง อำเภอแกดำ มหาสารคาม"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex gap-2 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsEditModalOpen(false);
+                                    setEditingCustomer(null);
+                                }}
+                                disabled={isSaving}
+                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            >
+                                ยกเลิก
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleUpdateCustomer}
+                                disabled={isSaving}
+                                className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-amber-300"
+                            >
+                                {isSaving ? 'กำลังอัปเดต...' : '💾 อัปเดต'}
                             </button>
                         </div>
                     </div>

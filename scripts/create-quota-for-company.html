@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สร้าง Quota สำหรับบริษัท</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .log-item {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .log-success { color: #27ae60; }
+        .log-error { color: #e74c3c; }
+        .log-info { color: #3498db; }
+        .log-warning { color: #f39c12; }
+        .company-list {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .company-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: white;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .company-id {
+            color: #888;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 สร้าง Quota สำหรับบริษัท</h1>
+        <p class="subtitle">สร้าง quota สำหรับบริษัทที่ยังไม่มี quota</p>
+
+        <div class="section">
+            <label>Company ID:</label>
+            <input type="text" id="companyId" placeholder="กรอก Company ID หรือคลิก 'โหลดบริษัท' เพื่อเลือก">
+        </div>
+
+        <div class="section">
+            <label>แผนการใช้งาน:</label>
+            <select id="plan">
+                <option value="free">Free Plan (3 users, 50 docs/month)</option>
+                <option value="basic">Basic Plan (10 users, 200 docs/month)</option>
+                <option value="premium">Premium Plan (50 users, 1000 docs/month)</option>
+                <option value="enterprise">Enterprise Plan (Unlimited)</option>
+            </select>
+        </div>
+
+        <button onclick="loadCompanies()" id="loadBtn">📋 โหลดรายการบริษัท</button>
+        <div id="companyList" class="company-list" style="display: none;"></div>
+
+        <button onclick="createQuota()" id="createBtn" style="margin-top: 15px;">✨ สร้าง Quota</button>
+
+        <div id="log" class="log" style="display: none;"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            getDoc,
+            getDocs,
+            setDoc,
+            Timestamp 
+        } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { 
+            getAuth, 
+            onAuthStateChanged 
+        } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpnW-q0MYKNfq_FcmLz_gG0uZa1fT-Cx8",
+            authDomain: "pdfexportfordeliveryandcert.firebaseapp.com",
+            projectId: "pdfexportfordeliveryandcert",
+            storageBucket: "pdfexportfordeliveryandcert.firebasestorage.app",
+            messagingSenderId: "906732652542",
+            appId: "1:906732652542:web:9fd2bb5f0c9ba14e75c8d1",
+            measurementId: "G-JZ4S0NRBR1"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // ตรวจสอบการ login
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                addLog('⚠️ กรุณา Login ก่อนใช้งาน', 'warning');
+                document.getElementById('createBtn').disabled = true;
+                document.getElementById('loadBtn').disabled = true;
+            } else {
+                addLog(`✅ Login สำเร็จ: ${user.email || user.phoneNumber}`, 'success');
+                document.getElementById('createBtn').disabled = false;
+                document.getElementById('loadBtn').disabled = false;
+            }
+        });
+
+        // Default Quota สำหรับแต่ละแผน
+        const DEFAULT_QUOTAS = {
+            free: {
+                plan: 'free',
+                status: 'active',
+                maxCompanies: 1,
+                currentCompanies: 0,
+                maxUsers: 3,
+                currentUsers: 0,
+                maxDocuments: 50,
+                currentDocuments: 0,
+                maxLogos: 1,
+                currentLogos: 0,
+                allowCustomLogo: false,
+                maxStorageMB: 100,
+                currentStorageMB: 0,
+                features: {
+                    multipleProfiles: false,
+                    apiAccess: false,
+                    customDomain: false,
+                    prioritySupport: false,
+                    exportPDF: true,
+                    exportExcel: false,
+                    advancedReports: false,
+                    customTemplates: false,
+                },
+            },
+            basic: {
+                plan: 'basic',
+                status: 'active',
+                maxCompanies: 3,
+                currentCompanies: 0,
+                maxUsers: 10,
+                currentUsers: 0,
+                maxDocuments: 200,
+                currentDocuments: 0,
+                maxLogos: 3,
+                currentLogos: 0,
+                allowCustomLogo: true,
+                maxStorageMB: 500,
+                currentStorageMB: 0,
+                features: {
+                    multipleProfiles: true,
+                    apiAccess: false,
+                    customDomain: false,
+                    prioritySupport: false,
+                    exportPDF: true,
+                    exportExcel: true,
+                    advancedReports: false,
+                    customTemplates: true,
+                },
+            },
+            premium: {
+                plan: 'premium',
+                status: 'active',
+                maxCompanies: 10,
+                currentCompanies: 0,
+                maxUsers: 50,
+                currentUsers: 0,
+                maxDocuments: 1000,
+                currentDocuments: 0,
+                maxLogos: 10,
+                currentLogos: 0,
+                allowCustomLogo: true,
+                maxStorageMB: 2000,
+                currentStorageMB: 0,
+                features: {
+                    multipleProfiles: true,
+                    apiAccess: true,
+                    customDomain: true,
+                    prioritySupport: true,
+                    exportPDF: true,
+                    exportExcel: true,
+                    advancedReports: true,
+                    customTemplates: true,
+                },
+            },
+            enterprise: {
+                plan: 'enterprise',
+                status: 'active',
+                maxCompanies: -1,
+                currentCompanies: 0,
+                maxUsers: -1,
+                currentUsers: 0,
+                maxDocuments: -1,
+                currentDocuments: 0,
+                maxLogos: -1,
+                currentLogos: 0,
+                allowCustomLogo: true,
+                maxStorageMB: -1,
+                currentStorageMB: 0,
+                features: {
+                    multipleProfiles: true,
+                    apiAccess: true,
+                    customDomain: true,
+                    prioritySupport: true,
+                    exportPDF: true,
+                    exportExcel: true,
+                    advancedReports: true,
+                    customTemplates: true,
+                },
+            },
+        };
+
+        // ฟังก์ชันเพิ่ม log
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            logDiv.style.display = 'block';
+            
+            const logItem = document.createElement('div');
+            logItem.className = `log-item log-${type}`;
+            logItem.textContent = `${new Date().toLocaleTimeString('th-TH')} - ${message}`;
+            
+            logDiv.appendChild(logItem);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // โหลดรายการบริษัท
+        window.loadCompanies = async function() {
+            try {
+                addLog('📋 กำลังโหลดรายการบริษัท...', 'info');
+                
+                const companiesRef = collection(db, 'companies');
+                const companiesSnapshot = await getDocs(companiesRef);
+                
+                const companyListDiv = document.getElementById('companyList');
+                companyListDiv.innerHTML = '';
+                companyListDiv.style.display = 'block';
+                
+                if (companiesSnapshot.empty) {
+                    addLog('⚠️ ไม่พบบริษัทในระบบ', 'warning');
+                    return;
+                }
+                
+                addLog(`✅ พบบริษัททั้งหมด: ${companiesSnapshot.size} บริษัท`, 'success');
+                
+                for (const companyDoc of companiesSnapshot.docs) {
+                    const companyData = companyDoc.data();
+                    const companyItem = document.createElement('div');
+                    companyItem.className = 'company-item';
+                    companyItem.style.cursor = 'pointer';
+                    companyItem.innerHTML = `
+                        <strong>${companyData.name || 'ไม่มีชื่อ'}</strong><br>
+                        <span class="company-id">ID: ${companyDoc.id}</span>
+                    `;
+                    companyItem.onclick = () => {
+                        document.getElementById('companyId').value = companyDoc.id;
+                        addLog(`✅ เลือกบริษัท: ${companyData.name} (${companyDoc.id})`, 'success');
+                    };
+                    companyListDiv.appendChild(companyItem);
+                }
+            } catch (error) {
+                addLog(`❌ โหลดบริษัทล้มเหลว: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+
+        // สร้าง Quota
+        window.createQuota = async function() {
+            const companyId = document.getElementById('companyId').value.trim();
+            const plan = document.getElementById('plan').value;
+            
+            if (!companyId) {
+                addLog('❌ กรุณากรอก Company ID', 'error');
+                return;
+            }
+            
+            try {
+                addLog(`🚀 เริ่มสร้าง quota สำหรับบริษัท: ${companyId}`, 'info');
+                
+                // ตรวจสอบว่าบริษัทมีอยู่จริง
+                const companyRef = doc(db, 'companies', companyId);
+                const companySnap = await getDoc(companyRef);
+                
+                if (!companySnap.exists()) {
+                    addLog('❌ ไม่พบบริษัทนี้ในระบบ', 'error');
+                    return;
+                }
+                
+                const companyData = companySnap.data();
+                addLog(`✅ พบบริษัท: ${companyData.name || 'ไม่มีชื่อ'}`, 'success');
+                
+                // ตรวจสอบว่ามี quota อยู่แล้วหรือไม่
+                const quotaRef = doc(db, 'companyQuotas', companyId);
+                const quotaSnap = await getDoc(quotaRef);
+                
+                if (quotaSnap.exists()) {
+                    addLog('⚠️ บริษัทนี้มี quota อยู่แล้ว', 'warning');
+                    const existingQuota = quotaSnap.data();
+                    addLog(`📊 แผนปัจจุบัน: ${existingQuota.plan}`, 'info');
+                    
+                    if (!confirm('บริษัทนี้มี quota อยู่แล้ว ต้องการเขียนทับหรือไม่?')) {
+                        addLog('❌ ยกเลิกการสร้าง quota', 'info');
+                        return;
+                    }
+                }
+                
+                // สร้าง quota ใหม่
+                const now = new Date();
+                const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                
+                const quotaData = {
+                    ...DEFAULT_QUOTAS[plan],
+                    startDate: Timestamp.fromDate(now),
+                    documentResetDate: Timestamp.fromDate(nextMonth),
+                    createdAt: Timestamp.fromDate(now),
+                    updatedAt: Timestamp.fromDate(now),
+                };
+                
+                await setDoc(quotaRef, quotaData);
+                
+                addLog(`✅ สร้าง quota สำเร็จ!`, 'success');
+                addLog(`📊 แผน: ${plan}`, 'info');
+                addLog(`👥 จำนวนผู้ใช้สูงสุด: ${quotaData.maxUsers === -1 ? 'ไม่จำกัด' : quotaData.maxUsers}`, 'info');
+                addLog(`📄 จำนวนเอกสารสูงสุด/เดือน: ${quotaData.maxDocuments === -1 ? 'ไม่จำกัด' : quotaData.maxDocuments}`, 'info');
+                addLog(`💾 พื้นที่จัดเก็บ: ${quotaData.maxStorageMB === -1 ? 'ไม่จำกัด' : quotaData.maxStorageMB + ' MB'}`, 'info');
+                
+            } catch (error) {
+                addLog(`❌ สร้าง quota ล้มเหลว: ${error.message}`, 'error');
+                console.error(error);
+            }
+        };
+    </script>
+</body>
+</html>
+

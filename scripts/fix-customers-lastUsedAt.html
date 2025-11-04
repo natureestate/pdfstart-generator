@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แก้ไข lastUsedAt ของลูกค้าที่มีอยู่</title>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, doc, updateDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWvF3PQT0sxYcEMQgR47L9jTSVXbglKlU",
+            authDomain: "ecertonline-29a67.firebaseapp.com",
+            projectId: "ecertonline-29a67",
+            storageBucket: "ecertonline-29a67.firebasestorage.app",
+            messagingSenderId: "1059860936544",
+            appId: "1:1059860936544:web:efa01b81fafc36a29b5f99"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.fixCustomersLastUsedAt = async function() {
+            const output = document.getElementById('output');
+            output.innerHTML = '🔄 กำลังแก้ไข...<br>';
+
+            try {
+                // ดึงลูกค้าทั้งหมดที่ไม่มี lastUsedAt
+                const customersRef = collection(db, 'customers');
+                const q = query(customersRef, where('companyId', '==', 'rZLfHPpFMF64OST11NTH'));
+                const querySnapshot = await getDocs(q);
+
+                output.innerHTML += `📋 พบลูกค้าทั้งหมด: ${querySnapshot.size} รายการ<br><br>`;
+
+                let updatedCount = 0;
+                let skippedCount = 0;
+
+                for (const docSnapshot of querySnapshot.docs) {
+                    const data = docSnapshot.data();
+                    const customerId = docSnapshot.id;
+
+                    // เช็คว่ามี lastUsedAt หรือไม่
+                    if (!data.lastUsedAt && data.lastUsedAt !== null) {
+                        output.innerHTML += `🔧 กำลังอัปเดต: ${data.customerName} (${customerId})<br>`;
+                        
+                        // อัปเดตให้มี lastUsedAt = null
+                        await updateDoc(doc(db, 'customers', customerId), {
+                            lastUsedAt: null
+                        });
+                        
+                        updatedCount++;
+                        output.innerHTML += `✅ อัปเดตสำเร็จ: ${data.customerName}<br><br>`;
+                    } else {
+                        output.innerHTML += `⏭️ ข้ามไป: ${data.customerName} (มี lastUsedAt อยู่แล้ว)<br><br>`;
+                        skippedCount++;
+                    }
+                }
+
+                output.innerHTML += `<br>✅ เสร็จสิ้น!<br>`;
+                output.innerHTML += `📊 อัปเดต: ${updatedCount} รายการ<br>`;
+                output.innerHTML += `⏭️ ข้ามไป: ${skippedCount} รายการ<br>`;
+            } catch (error) {
+                output.innerHTML += `<br>❌ เกิดข้อผิดพลาด: ${error.message}<br>`;
+                console.error('Error:', error);
+            }
+        };
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            min-height: 100px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 แก้ไข lastUsedAt ของลูกค้า</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 20px;">
+            Script นี้จะเพิ่มฟิลด์ <code>lastUsedAt: null</code> ให้กับลูกค้าที่ไม่มีฟิลด์นี้
+        </p>
+        <button onclick="fixCustomersLastUsedAt()">🚀 เริ่มแก้ไข</button>
+        <div id="output"></div>
+    </div>
+</body>
+</html>
+

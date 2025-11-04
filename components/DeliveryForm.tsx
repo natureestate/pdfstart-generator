@@ -1,8 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { DeliveryNoteData, WorkItem, LogoType } from '../types';
 import { formatDateForInput } from '../utils/dateUtils';
-import LogoManager from './LogoManager';
-import CompanyProfileSelector from './CompanyProfileSelector';
+import CustomerSelector from './CustomerSelector';
 import { generateDocumentNumber } from '../services/documentNumber';
 
 export interface DeliveryFormProps {
@@ -160,54 +159,24 @@ const DeliveryForm: React.FC<DeliveryFormProps> = ({
 
             {/* Form Fields */}
             <div className="space-y-6">
-                <FormDivider title="ข้อมูลผู้ส่งมอบ" />
+                <FormDivider title="ข้อมูลผู้รับมอบ/ลูกค้า" />
                 <div className="space-y-4">
-                     {/* ใช้ LogoManager component แทนการจัดการโลโก้เอง */}
-                     <LogoManager
-                        currentLogo={sharedLogo !== undefined ? sharedLogo : data.logo}
-                        logoUrl={sharedLogoUrl !== undefined ? sharedLogoUrl : data.logoUrl}
-                        logoType={sharedLogoType || data.logoType || 'default'}
-                        companyDefaultLogoUrl={companyDefaultLogoUrl}
-                        onChange={handleLogoChange}
-                        onSetDefaultLogo={onSetDefaultLogo}
-                        showLabel={true}
-                        label="โลโก้บริษัท"
-                     />
-
-                    {/* Company Profile Selector สำหรับผู้ส่ง */}
-                    <CompanyProfileSelector
-                        type="sender"
-                        label="เลือกข้อมูลผู้ส่ง"
-                        currentCompany={data.fromCompany}
-                        currentAddress={data.fromAddress}
-                        onSelect={(profile) => {
-                            handleDataChange('fromCompany', profile.companyName);
-                            handleDataChange('fromAddress', profile.address);
+                    {/* CustomerSelector - ระบบจัดการลูกค้าแบบครบวงจร */}
+                    <CustomerSelector
+                        label="เลือกข้อมูลผู้รับ/ลูกค้า"
+                        onSelect={(customer) => {
+                            handleDataChange('toCompany', customer.customerName);
+                            handleDataChange('toAddress', customer.address);
+                            if (customer.projectName) {
+                                handleDataChange('project', customer.projectName);
+                            }
                         }}
-                    />
-
-                    <div>
-                        <label htmlFor="fromCompany" className="block text-sm font-medium text-slate-700">ชื่อบริษัท/ผู้ส่ง</label>
-                        <input type="text" id="fromCompany" value={data.fromCompany} onChange={(e) => handleDataChange('fromCompany', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
-                    </div>
-                    <div>
-                        <label htmlFor="fromAddress" className="block text-sm font-medium text-slate-700">ที่อยู่</label>
-                        <textarea id="fromAddress" value={data.fromAddress} onChange={(e) => handleDataChange('fromAddress', e.target.value)} rows={3} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-gray-50" />
-                    </div>
-                </div>
-
-                <FormDivider title="ข้อมูลผู้รับมอบ" />
-                <div className="space-y-4">
-                    {/* Company Profile Selector สำหรับผู้รับ */}
-                    <CompanyProfileSelector
-                        type="receiver"
-                        label="เลือกข้อมูลผู้รับ"
-                        currentCompany={data.toCompany}
-                        currentAddress={data.toAddress}
-                        onSelect={(profile) => {
-                            handleDataChange('toCompany', profile.companyName);
-                            handleDataChange('toAddress', profile.address);
+                        currentCustomer={{
+                            customerName: data.toCompany,
+                            address: data.toAddress,
+                            projectName: data.project,
                         }}
+                        showSaveButton={true}
                     />
 
                     <div>

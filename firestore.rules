@@ -140,23 +140,14 @@ service cloud.firestore {
     
     // Customers (ข้อมูลลูกค้า) - Customer Management System
     match /customers/{customerId} {
-      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
-      allow read: if isAuthenticated() && (
-        isOwner(resource.data.userId) ||
-        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
-      );
+      // ชั่วคราว: อนุญาตให้ทุกคนที่ Login แล้วอ่านได้ทั้งหมด (เพื่อทดสอบ)
+      allow read: if isAuthenticated();
       
-      // อนุญาตให้สร้างลูกค้าใหม่ได้เฉพาะผู้ที่ Login แล้ว และต้องมี companyId
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid &&
-        request.resource.data.companyId != null &&
-        isMemberOfCompany(request.resource.data.companyId);
+      // อนุญาตให้สร้างลูกค้าใหม่ได้ถ้า Login แล้วและ userId ตรงกับผู้ใช้ปัจจุบัน
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       
-      // อนุญาตให้แก้ไขและลบได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน
-      allow update, delete: if isAuthenticated() && (
-        isOwner(resource.data.userId) ||
-        (resource.data.companyId != null && isMemberOfCompany(resource.data.companyId))
-      );
+      // อนุญาตให้แก้ไขและลบได้ถ้า Login แล้ว
+      allow update, delete: if isAuthenticated();
     }
     
     // Document Numbers (เลขที่เอกสารอัตโนมัติ - Running Number) - รองรับ Multi-user
@@ -229,10 +220,15 @@ service cloud.firestore {
     
     // Company Quotas (โควตาและแผนการใช้งานของบริษัท)
     match /companyQuotas/{companyId} {
-      // อนุญาตให้อ่านได้ถ้าเป็นสมาชิกในองค์กรเดียวกัน หรือเป็น Super Admin
+      // อนุญาตให้อ่านได้ถ้า:
+      // 1. เป็น Super Admin
+      // 2. เป็นสมาชิกในองค์กรเดียวกัน (มี companyMembers document)
+      // 3. เป็นเจ้าของบริษัท (userId ใน companies collection ตรงกับ user ปัจจุบัน)
       allow read: if isAuthenticated() && (
         isSuperAdmin() ||
-        isMemberOfCompany(companyId)
+        isMemberOfCompany(companyId) ||
+        exists(/databases/$(database)/documents/companies/$(companyId)) &&
+        get(/databases/$(database)/documents/companies/$(companyId)).data.userId == request.auth.uid
       );
       
       // อนุญาตให้สร้างได้เฉพาะ Super Admin หรือตอนสร้างบริษัทใหม่

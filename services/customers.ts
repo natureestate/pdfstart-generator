@@ -81,6 +81,7 @@ export const saveCustomer = async (
             userId: currentUser.uid,
             companyId: companyId || customer.companyId,
             usageCount: 0, // เริ่มต้นที่ 0
+            lastUsedAt: null, // เริ่มต้นที่ null เพื่อให้ query orderBy ทำงานได้
             createdAt: Timestamp.now(),
             updatedAt: Timestamp.now(),
         });
@@ -99,6 +100,8 @@ export const saveCustomer = async (
  */
 export const getCustomers = async (companyId: string): Promise<Customer[]> => {
     try {
+        console.log('🔍 [getCustomers] เริ่มดึงข้อมูลลูกค้า, companyId:', companyId);
+        
         // ตรวจสอบว่า user login แล้วหรือยัง
         const currentUser = auth.currentUser;
         if (!currentUser) {
@@ -109,6 +112,8 @@ export const getCustomers = async (companyId: string): Promise<Customer[]> => {
             throw new Error('กรุณาเลือกบริษัทก่อน');
         }
         
+        console.log('🔍 [getCustomers] กำลัง query...');
+        
         // Query: กรองเฉพาะบริษัทที่เลือก และเรียงตาม lastUsedAt
         const q = query(
             collection(db, CUSTOMERS_COLLECTION),
@@ -117,6 +122,7 @@ export const getCustomers = async (companyId: string): Promise<Customer[]> => {
         );
 
         const querySnapshot = await getDocs(q);
+        console.log('🔍 [getCustomers] Query เสร็จ, จำนวน docs:', querySnapshot.size);
         const customers: Customer[] = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {

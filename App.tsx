@@ -84,6 +84,9 @@ const AppContent: React.FC = () => {
     const [notification, setNotification] = useState<Notification>({ show: false, message: '', type: 'info' });
     const printableAreaRef = useRef<HTMLDivElement>(null);
     
+    // Edit Mode - track ว่ากำลัง edit document เดิมหรือสร้างใหม่
+    const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
+    
     // Shared Logo State - ใช้ร่วมกันระหว่างทั้ง 2 แท็บ
     const [sharedLogo, setSharedLogo] = useState<string | null>(null);
     const [sharedLogoUrl, setSharedLogoUrl] = useState<string | null>(null);
@@ -104,6 +107,29 @@ const AppContent: React.FC = () => {
             logoType: sharedLogoType,
         }));
     }, [sharedLogo, sharedLogoUrl, sharedLogoType]);
+
+    // Sync ข้อมูลบริษัทจาก currentCompany ไปยัง form data
+    useEffect(() => {
+        if (currentCompany) {
+            console.log('📝 [App] Syncing company data to forms:', currentCompany);
+            
+            // Sync ไปยัง DeliveryForm (ข้อมูลผู้ส่ง)
+            setDeliveryData(prev => ({
+                ...prev,
+                fromCompany: currentCompany.name,
+                fromAddress: currentCompany.address || '',
+            }));
+
+            // Sync ไปยัง WarrantyForm (ข้อมูลบริษัท)
+            setWarrantyData(prev => ({
+                ...prev,
+                companyName: currentCompany.name,
+                companyAddress: currentCompany.address || '',
+                companyPhone: currentCompany.phone || '',
+                companyEmail: currentCompany.email || '',
+            }));
+        }
+    }, [currentCompany]);
 
     /**
      * ตั้งค่า default logo ของ company
@@ -134,20 +160,40 @@ const AppContent: React.FC = () => {
         setNotification({ show: true, message, type });
     };
 
-    // ฟังก์ชันบันทึกข้อมูลลง Firestore พร้อม companyId
+    // ฟังก์ชันบันทึกข้อมูลลง Firestore พร้อม companyId (รองรับทั้ง create และ update)
     const handleSaveToFirestore = useCallback(async () => {
         setIsSaving(true);
-        showToast('กำลังบันทึกข้อมูล...', 'info');
+        
+        const isEditMode = !!editingDocumentId;
+        showToast(isEditMode ? 'กำลังอัปเดตเอกสาร...' : 'กำลังบันทึกเอกสารใหม่...', 'info');
 
         try {
             const companyId = currentCompany?.id; // ดึง companyId จาก context
             
             if (activeTab === 'delivery') {
-                const id = await saveDeliveryNote(deliveryData, companyId);
-                showToast(`บันทึกใบส่งมอบงานสำเร็จ (ID: ${id})`, 'success');
+                if (isEditMode) {
+                    // อัปเดตเอกสารเดิม
+                    const { updateDeliveryNote } = await import('./services/firestore');
+                    await updateDeliveryNote(editingDocumentId, deliveryData);
+                    showToast(`อัปเดตใบส่งมอบงานสำเร็จ`, 'success');
+                } else {
+                    // สร้างเอกสารใหม่
+                    const id = await saveDeliveryNote(deliveryData, companyId);
+                    showToast(`บันทึกใบส่งมอบงานสำเร็จ (ID: ${id})`, 'success');
+                    setEditingDocumentId(id); // เปลี่ยนเป็น edit mode
+                }
             } else {
-                const id = await saveWarrantyCard(warrantyData, companyId);
-                showToast(`บันทึกใบรับประกันสำเร็จ (ID: ${id})`, 'success');
+                if (isEditMode) {
+                    // อัปเดตเอกสารเดิม
+                    const { updateWarrantyCard } = await import('./services/firestore');
+                    await updateWarrantyCard(editingDocumentId, warrantyData);
+                    showToast(`อัปเดตใบรับประกันสำเร็จ`, 'success');
+                } else {
+                    // สร้างเอกสารใหม่
+                    const id = await saveWarrantyCard(warrantyData, companyId);
+                    showToast(`บันทึกใบรับประกันสำเร็จ (ID: ${id})`, 'success');
+                    setEditingDocumentId(id); // เปลี่ยนเป็น edit mode
+                }
             }
         } catch (error) {
             console.error('Failed to save to Firestore:', error);
@@ -155,7 +201,7 @@ const AppContent: React.FC = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [activeTab, deliveryData, warrantyData, currentCompany]);
+    }, [activeTab, deliveryData, warrantyData, currentCompany, editingDocumentId]);
 
     // ฟังก์ชัน Export PDF
     const handleExportPdf = useCallback(async () => {
@@ -196,7 +242,7 @@ const AppContent: React.FC = () => {
         }
     }, [activeTab, deliveryData.docNumber, warrantyData.serialNumber, currentCompany]);
 
-    // ฟังก์ชันโหลดเอกสารจาก History
+    // ฟังก์ชันโหลดเอกสารจาก History (สำหรับ Edit)
     const handleLoadDocument = useCallback((doc: DeliveryNoteDocument | WarrantyDocument) => {
         // โหลด logo จากเอกสาร
         if (doc.logoUrl || doc.logo) {
@@ -204,6 +250,9 @@ const AppContent: React.FC = () => {
             setSharedLogoUrl(doc.logoUrl || null);
             setSharedLogoType(doc.logoType || 'default');
         }
+
+        // Track document ID สำหรับ edit mode
+        setEditingDocumentId(doc.id || null);
 
         if ('project' in doc) {
             // เป็น DeliveryNoteDocument
@@ -221,11 +270,14 @@ const AppContent: React.FC = () => {
             setActiveTab('warranty');
         }
         setViewMode('form');
-        showToast('โหลดเอกสารสำเร็จ', 'success');
+        showToast('โหลดเอกสารสำเร็จ - โหมดแก้ไข', 'info');
     }, []);
 
     // ฟังก์ชันสร้างฟอร์มใหม่
     const handleCreateNewForm = useCallback(() => {
+        // Clear edit mode
+        setEditingDocumentId(null);
+        
         if (activeTab === 'delivery') {
             setDeliveryData(getInitialDeliveryData());
         } else {
@@ -292,6 +344,22 @@ const AppContent: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
                         {/* Form Section */}
                         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg mb-8 lg:mb-0">
+                            {/* Edit Mode Indicator */}
+                            {editingDocumentId && (
+                                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+                                    <div className="flex items-center">
+                                        <span className="text-amber-700 font-medium">✏️ โหมดแก้ไข</span>
+                                        <span className="ml-2 text-sm text-amber-600">กำลังแก้ไขเอกสาร: {editingDocumentId}</span>
+                                    </div>
+                                    <button
+                                        onClick={handleCreateNewForm}
+                                        className="text-sm px-3 py-1 bg-white border border-amber-300 rounded hover:bg-amber-50 text-amber-700"
+                                    >
+                                        🆕 สร้างเอกสารใหม่
+                                    </button>
+                                </div>
+                            )}
+                            
                             <div className="border-b border-gray-200">
                                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
                                     <button
@@ -374,7 +442,7 @@ const AppContent: React.FC = () => {
                                                     <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
                                                 </svg>
                                             )}
-                                            {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
+                                            {isSaving ? 'กำลังบันทึก...' : (editingDocumentId ? '💾 อัปเดต' : '💾 บันทึก')}
                                         </button>
                                         <button
                                             type="button"

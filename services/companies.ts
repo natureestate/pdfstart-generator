@@ -210,10 +210,19 @@ export const updateCompany = async (
 ): Promise<void> => {
     try {
         const docRef = doc(db, COMPANIES_COLLECTION, companyId);
-        await updateDoc(docRef, {
-            ...updates,
-            updatedAt: Timestamp.now(),
+        
+        // กรอง undefined values ออก เพราะ Firestore ไม่รองรับ undefined
+        const cleanedUpdates: any = {};
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value !== undefined) {
+                cleanedUpdates[key] = value;
+            }
         });
+        
+        // เพิ่ม updatedAt
+        cleanedUpdates.updatedAt = Timestamp.now();
+        
+        await updateDoc(docRef, cleanedUpdates);
 
         console.log('✅ อัปเดตบริษัทสำเร็จ:', companyId);
     } catch (error) {

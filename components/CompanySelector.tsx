@@ -6,7 +6,9 @@
 import React, { useState } from 'react';
 import { useCompany } from '../contexts/CompanyContext';
 import { createCompany } from '../services/companies';
+import { canCreateCompany } from '../services/quota';
 import { Company } from '../types';
+import { auth } from '../firebase.config';
 
 const CompanySelector: React.FC = () => {
     const { currentCompany, companies, selectCompany, refreshCompanies, loading } = useCompany();
@@ -16,6 +18,7 @@ const CompanySelector: React.FC = () => {
     const [newCompanyAddress, setNewCompanyAddress] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [quotaInfo, setQuotaInfo] = useState<{ currentCount: number; maxCount: number; plan?: string } | null>(null);
     
     // Debug logs - แสดงข้อมูลทุกครั้งที่ render
     console.log('🏢 [CompanySelector] Rendered');
@@ -30,6 +33,43 @@ const CompanySelector: React.FC = () => {
     const handleSelectCompany = (company: Company) => {
         selectCompany(company);
         setShowDropdown(false);
+    };
+
+    /**
+     * ตรวจสอบสิทธิ์และเปิด modal สร้างบริษัท
+     */
+    const handleOpenCreateModal = async () => {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            setError('กรุณา Login ก่อนสร้างบริษัท');
+            return;
+        }
+
+        try {
+            // ตรวจสอบว่าสามารถสร้างบริษัทใหม่ได้หรือไม่
+            const result = await canCreateCompany(currentUser.uid);
+            
+            if (!result.canCreate) {
+                // แสดง error message
+                alert(result.reason || 'ไม่สามารถสร้างบริษัทใหม่ได้');
+                return;
+            }
+
+            // บันทึกข้อมูล quota เพื่อแสดงใน modal
+            setQuotaInfo({
+                currentCount: result.currentCount,
+                maxCount: result.maxCount,
+                plan: result.plan,
+            });
+
+            // เปิด modal
+            setShowDropdown(false);
+            setShowCreateModal(true);
+            setError(null);
+        } catch (err: any) {
+            console.error('❌ ตรวจสอบสิทธิ์ล้มเหลว:', err);
+            setError(err.message || 'ไม่สามารถตรวจสอบสิทธิ์ได้');
+        }
     };
 
     /**
@@ -185,10 +225,7 @@ const CompanySelector: React.FC = () => {
 
                     <div className="p-2 border-t border-gray-200 bg-white flex-shrink-0 rounded-b-lg">
                         <button
-                            onClick={() => {
-                                setShowCreateModal(true);
-                                setShowDropdown(false);
-                            }}
+                            onClick={handleOpenCreateModal}
                             className="w-full px-4 py-2 text-left text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors flex items-center gap-2"
                         >
                             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,9 +242,21 @@ const CompanySelector: React.FC = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
                         <div className="p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
                                 เพิ่มบริษัทใหม่
                             </h3>
+                            
+                            {/* แสดงข้อมูล Quota */}
+                            {quotaInfo && (
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p className="text-sm text-blue-800">
+                                        <span className="font-medium">
+                                            {quotaInfo.plan ? `แผน ${quotaInfo.plan.toUpperCase()}` : 'แผนปัจจุบัน'}:
+                                        </span>
+                                        {' '}สร้างได้ {quotaInfo.currentCount}/{quotaInfo.maxCount === -1 ? '∞' : quotaInfo.maxCount} องค์กร
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="space-y-4">
                                 <div>

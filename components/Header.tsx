@@ -4,13 +4,16 @@ import { useCompany } from '../contexts/CompanyContext';
 import { signOut, getLinkedProviders, linkWithEmailPassword, changePassword, sendPasswordReset } from '../services/auth';
 import CompanySelector from './CompanySelector';
 import UserManagement from './UserManagement';
+import LogoManagerModal from './LogoManagerModal';
+import CompanyInfoModal from './CompanyInfoModal';
 import { checkIsAdmin } from '../services/companyMembers';
 import { getQuota } from '../services/quota';
-import { CompanyQuota } from '../types';
+import { updateCompany } from '../services/companies';
+import { CompanyQuota, LogoType } from '../types';
 
 const Header: React.FC = () => {
     const { user } = useAuth();
-    const { currentCompany } = useCompany();
+    const { currentCompany, refreshCompanies } = useCompany();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -40,6 +43,15 @@ const Header: React.FC = () => {
     const [showQuotaModal, setShowQuotaModal] = useState(false);
     const [quota, setQuota] = useState<CompanyQuota | null>(null);
     const [quotaLoading, setQuotaLoading] = useState(false);
+
+    // Logo Manager Modal
+    const [showLogoModal, setShowLogoModal] = useState(false);
+    const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+    const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
+    const [companyLogoType, setCompanyLogoType] = useState<LogoType>('default');
+
+    // Company Info Modal
+    const [showCompanyInfoModal, setShowCompanyInfoModal] = useState(false);
 
     // ตรวจสอบว่ามี Password หรือไม่
     useEffect(() => {
@@ -92,6 +104,19 @@ const Header: React.FC = () => {
             document.body.style.overflow = 'unset';
         };
     }, [showMobileMenu]);
+
+    // โหลดข้อมูลโลโก้จาก currentCompany
+    useEffect(() => {
+        if (currentCompany) {
+            setCompanyLogo(currentCompany.logoUrl || null);
+            setCompanyLogoUrl(currentCompany.logoUrl || null);
+            setCompanyLogoType(currentCompany.logoType || 'default');
+        } else {
+            setCompanyLogo(null);
+            setCompanyLogoUrl(null);
+            setCompanyLogoType('default');
+        }
+    }, [currentCompany]);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -230,6 +255,104 @@ const Header: React.FC = () => {
         }
     };
 
+    /**
+     * จัดการการเปลี่ยนแปลงโลโก้
+     */
+    const handleLogoChange = async (logo: string | null, logoUrl: string | null, logoType: LogoType) => {
+        console.log('🎨 [Header] เปลี่ยนโลโก้:', { logo, logoUrl, logoType });
+        
+        // อัปเดต state ใน Header
+        setCompanyLogo(logo);
+        setCompanyLogoUrl(logoUrl);
+        setCompanyLogoType(logoType);
+
+        // บันทึกลง Firebase
+        if (currentCompany?.id) {
+            try {
+                await updateCompany(currentCompany.id, {
+                    logoUrl: logoUrl,
+                    logoType: logoType,
+                });
+                console.log('✅ [Header] บันทึกโลโก้สำเร็จ');
+            } catch (error) {
+                console.error('❌ [Header] บันทึกโลโก้ล้มเหลว:', error);
+                alert('❌ ไม่สามารถบันทึกโลโก้ได้');
+            }
+        }
+    };
+
+    /**
+     * ตั้งค่า default logo ของบริษัท
+     */
+    const handleSetDefaultLogo = async (logoUrl: string) => {
+        if (!currentCompany?.id) {
+            throw new Error('ไม่พบข้อมูลบริษัท');
+        }
+
+        try {
+            await updateCompany(currentCompany.id, {
+                defaultLogoUrl: logoUrl,
+            });
+            console.log('✅ [Header] ตั้งค่า default logo สำเร็จ');
+            alert('✅ ตั้งค่า default logo สำเร็จ');
+        } catch (error) {
+            console.error('❌ [Header] ตั้งค่า default logo ล้มเหลว:', error);
+            throw error;
+        }
+    };
+
+    /**
+     * เปิด Logo Manager Modal
+     */
+    const handleShowLogoManager = () => {
+        setShowLogoModal(true);
+        setShowDropdown(false);
+        setShowMobileMenu(false);
+    };
+
+    /**
+     * บันทึกข้อมูลบริษัท
+     */
+    const handleSaveCompanyInfo = async (data: {
+        name: string;
+        address?: string;
+        phone?: string;
+        email?: string;
+    }) => {
+        if (!currentCompany?.id) {
+            throw new Error('ไม่พบข้อมูลบริษัท');
+        }
+
+        try {
+            await updateCompany(currentCompany.id, {
+                name: data.name,
+                address: data.address,
+                phone: data.phone,
+                email: data.email,
+            });
+            console.log('✅ [Header] บันทึกข้อมูลบริษัทสำเร็จ');
+            
+            // รีเฟรชข้อมูลบริษัทจาก Context
+            if (refreshCompanies) {
+                await refreshCompanies();
+            }
+            
+            alert('✅ บันทึกข้อมูลบริษัทสำเร็จ');
+        } catch (error) {
+            console.error('❌ [Header] บันทึกข้อมูลบริษัทล้มเหลว:', error);
+            throw error;
+        }
+    };
+
+    /**
+     * เปิด Company Info Modal
+     */
+    const handleShowCompanyInfo = () => {
+        setShowCompanyInfoModal(true);
+        setShowDropdown(false);
+        setShowMobileMenu(false);
+    };
+
     return (
         <>
             <header className="bg-white shadow-md sticky top-0 z-30">
@@ -343,6 +466,32 @@ const Header: React.FC = () => {
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                                                         </svg>
                                                         <span className="font-medium">🔑 เปลี่ยนรหัสผ่าน</span>
+                                                    </button>
+                                                )}
+
+                                                {/* ปุ่มข้อมูลบริษัท */}
+                                                {currentCompany && isAdmin && (
+                                                    <button
+                                                        onClick={handleShowCompanyInfo}
+                                                        className="w-full px-4 py-3 text-left text-sm text-green-600 hover:bg-green-50 transition-colors duration-200 flex items-center gap-3 border-b border-gray-200"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                                        </svg>
+                                                        <span className="font-medium">🏢 ข้อมูลบริษัท</span>
+                                                    </button>
+                                                )}
+
+                                                {/* ปุ่มจัดการโลโก้ */}
+                                                {currentCompany && isAdmin && (
+                                                    <button
+                                                        onClick={handleShowLogoManager}
+                                                        className="w-full px-4 py-3 text-left text-sm text-pink-600 hover:bg-pink-50 transition-colors duration-200 flex items-center gap-3 border-b border-gray-200"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                        <span className="font-medium">🎨 จัดการโลโก้</span>
                                                     </button>
                                                 )}
 
@@ -553,6 +702,36 @@ const Header: React.FC = () => {
                                             </svg>
                                         </div>
                                         <span>🔑 เปลี่ยนรหัสผ่าน</span>
+                                    </button>
+                                )}
+
+                                {/* ปุ่มข้อมูลบริษัท */}
+                                {currentCompany && isAdmin && (
+                                    <button
+                                        onClick={handleShowCompanyInfo}
+                                        className="w-full px-4 py-3.5 text-left text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-all duration-200 flex items-center gap-3 mb-2 shadow-sm hover:shadow"
+                                    >
+                                        <div className="w-9 h-9 rounded-lg bg-green-200 flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                            </svg>
+                                        </div>
+                                        <span>🏢 ข้อมูลบริษัท</span>
+                                    </button>
+                                )}
+
+                                {/* ปุ่มจัดการโลโก้ */}
+                                {currentCompany && isAdmin && (
+                                    <button
+                                        onClick={handleShowLogoManager}
+                                        className="w-full px-4 py-3.5 text-left text-sm font-medium text-pink-700 bg-pink-50 hover:bg-pink-100 rounded-lg transition-all duration-200 flex items-center gap-3 mb-2 shadow-sm hover:shadow"
+                                    >
+                                        <div className="w-9 h-9 rounded-lg bg-pink-200 flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-pink-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <span>🎨 จัดการโลโก้</span>
                                     </button>
                                 )}
 
@@ -1056,6 +1235,33 @@ const Header: React.FC = () => {
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Logo Manager Modal */}
+            {showLogoModal && (
+                <LogoManagerModal
+                    isOpen={showLogoModal}
+                    onClose={() => setShowLogoModal(false)}
+                    currentLogo={companyLogo}
+                    logoUrl={companyLogoUrl}
+                    logoType={companyLogoType}
+                    companyDefaultLogoUrl={currentCompany?.defaultLogoUrl}
+                    onChange={handleLogoChange}
+                    onSetDefaultLogo={handleSetDefaultLogo}
+                />
+            )}
+
+            {/* Company Info Modal */}
+            {showCompanyInfoModal && currentCompany && (
+                <CompanyInfoModal
+                    isOpen={showCompanyInfoModal}
+                    onClose={() => setShowCompanyInfoModal(false)}
+                    companyName={currentCompany.name}
+                    companyAddress={currentCompany.address}
+                    companyPhone={currentCompany.phone}
+                    companyEmail={currentCompany.email}
+                    onSave={handleSaveCompanyInfo}
+                />
             )}
         </>
     );

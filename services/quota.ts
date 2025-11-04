@@ -28,6 +28,8 @@ const DEFAULT_QUOTAS: Record<SubscriptionPlan, Omit<CompanyQuota, 'startDate' | 
     free: {
         plan: 'free',
         status: 'active',
+        maxCompanies: 1,             // สร้างได้แค่ 1 องค์กร
+        currentCompanies: 0,
         maxUsers: 3,                 // สูงสุด 3 คน
         currentUsers: 0,
         maxDocuments: 50,            // 50 เอกสาร/เดือน
@@ -42,7 +44,7 @@ const DEFAULT_QUOTAS: Record<SubscriptionPlan, Omit<CompanyQuota, 'startDate' | 
             apiAccess: false,
             customDomain: false,
             prioritySupport: false,
-            exportPDF: false,            // ❌ Free plan ไม่สามารถ Export PDF
+            exportPDF: true,             // ✅ Free plan สามารถ Export PDF ได้
             exportExcel: false,
             advancedReports: false,
             customTemplates: false,
@@ -51,6 +53,8 @@ const DEFAULT_QUOTAS: Record<SubscriptionPlan, Omit<CompanyQuota, 'startDate' | 
     basic: {
         plan: 'basic',
         status: 'active',
+        maxCompanies: 3,             // สร้างได้สูงสุด 3 องค์กร
+        currentCompanies: 0,
         maxUsers: 10,                // สูงสุด 10 คน
         currentUsers: 0,
         maxDocuments: 200,           // 200 เอกสาร/เดือน
@@ -76,6 +80,8 @@ const DEFAULT_QUOTAS: Record<SubscriptionPlan, Omit<CompanyQuota, 'startDate' | 
     premium: {
         plan: 'premium',
         status: 'active',
+        maxCompanies: 10,            // สร้างได้สูงสุด 10 องค์กร
+        currentCompanies: 0,
         maxUsers: 50,                // สูงสุด 50 คน
         currentUsers: 0,
         maxDocuments: 1000,          // 1000 เอกสาร/เดือน
@@ -101,6 +107,8 @@ const DEFAULT_QUOTAS: Record<SubscriptionPlan, Omit<CompanyQuota, 'startDate' | 
     enterprise: {
         plan: 'enterprise',
         status: 'active',
+        maxCompanies: -1,            // ไม่จำกัด
+        currentCompanies: 0,
         maxUsers: -1,                // ไม่จำกัด
         currentUsers: 0,
         maxDocuments: -1,            // ไม่จำกัด
@@ -232,6 +240,8 @@ export const getQuota = async (companyId: string): Promise<CompanyQuota | null> 
         return {
             plan: data.plan,
             status: data.status,
+            maxCompanies: data.maxCompanies ?? 1,  // Default 1 ถ้าไม่มีข้อมูล
+            currentCompanies: data.currentCompanies ?? 0,
             maxUsers: data.maxUsers,
             currentUsers: data.currentUsers,
             maxDocuments: data.maxDocuments,
@@ -512,6 +522,8 @@ export const getAllQuotas = async (): Promise<(CompanyQuota & { companyId: strin
                 companyId: doc.id,
                 plan: data.plan,
                 status: data.status,
+                maxCompanies: data.maxCompanies ?? 1,
+                currentCompanies: data.currentCompanies ?? 0,
                 maxUsers: data.maxUsers,
                 currentUsers: data.currentUsers,
                 maxDocuments: data.maxDocuments,
@@ -565,6 +577,158 @@ export const getExpiredQuotas = async (): Promise<string[]> => {
     } catch (error) {
         console.error('❌ ดึงรายการที่หมดอายุล้มเหลว:', error);
         throw new Error('ไม่สามารถดึงรายการที่หมดอายุได้');
+    }
+};
+
+/**
+ * ตรวจสอบว่า user สามารถสร้างบริษัทใหม่ได้หรือไม่
+ * @param userId - User ID
+ * @returns { canCreate: boolean, reason?: string, currentCount: number, maxCount: number }
+ */
+export const canCreateCompany = async (userId: string): Promise<{
+    canCreate: boolean;
+    reason?: string;
+    currentCount: number;
+    maxCount: number;
+    plan?: string;
+}> => {
+    try {
+        // ดึงรายการบริษัททั้งหมดของ user
+        const companiesRef = collection(db, 'companies');
+        const q = query(companiesRef, where('userId', '==', userId));
+        const companiesSnapshot = await getDocs(q);
+        const currentCount = companiesSnapshot.size;
+
+        console.log(`📊 [canCreateCompany] User ${userId} มีบริษัท: ${currentCount} บริษัท`);
+
+        // ถ้ายังไม่มีบริษัทเลย อนุญาตให้สร้างได้เสมอ (บริษัทแรก)
+        if (currentCount === 0) {
+            console.log('✅ [canCreateCompany] อนุญาตให้สร้างบริษัทแรก');
+            return {
+                canCreate: true,
+                currentCount: 0,
+                maxCount: 1,
+            };
+        }
+
+        // ดึง quota ของบริษัทแรก (ใช้ quota ของบริษัทแรกเป็นตัวกำหนด)
+        const firstCompanyId = companiesSnapshot.docs[0].id;
+        const quota = await getQuota(firstCompanyId);
+
+        if (!quota) {
+            console.warn('⚠️ [canCreateCompany] ไม่พบ quota สำหรับบริษัท:', firstCompanyId);
+            // ถ้าไม่มี quota ให้อนุญาตสร้างได้ 1 บริษัท (Free Plan default)
+            if (currentCount >= 1) {
+                return {
+                    canCreate: false,
+                    reason: 'Free Plan สามารถสร้างได้แค่ 1 องค์กร กรุณาอัปเกรดแผนเพื่อสร้างองค์กรเพิ่มเติม',
+                    currentCount,
+                    maxCount: 1,
+                    plan: 'free',
+                };
+            }
+            return {
+                canCreate: true,
+                currentCount,
+                maxCount: 1,
+            };
+        }
+
+        const maxCompanies = quota.maxCompanies;
+        const plan = quota.plan;
+
+        console.log(`📊 [canCreateCompany] แผน: ${plan}, สร้างได้สูงสุด: ${maxCompanies === -1 ? 'ไม่จำกัด' : maxCompanies}`);
+
+        // ตรวจสอบว่าเกินโควตาหรือไม่
+        if (maxCompanies === -1) {
+            // ไม่จำกัด (Enterprise)
+            console.log('✅ [canCreateCompany] แผน Enterprise - ไม่จำกัดจำนวนองค์กร');
+            return {
+                canCreate: true,
+                currentCount,
+                maxCount: -1,
+                plan,
+            };
+        }
+
+        if (currentCount >= maxCompanies) {
+            console.log(`❌ [canCreateCompany] เกินโควตา: ${currentCount}/${maxCompanies}`);
+            return {
+                canCreate: false,
+                reason: `แผน ${plan.toUpperCase()} สามารถสร้างได้สูงสุด ${maxCompanies} องค์กร (ปัจจุบันมี ${currentCount} องค์กร) กรุณาอัปเกรดแผนเพื่อสร้างองค์กรเพิ่มเติม`,
+                currentCount,
+                maxCount: maxCompanies,
+                plan,
+            };
+        }
+
+        console.log(`✅ [canCreateCompany] สามารถสร้างได้: ${currentCount}/${maxCompanies}`);
+        return {
+            canCreate: true,
+            currentCount,
+            maxCount: maxCompanies,
+            plan,
+        };
+
+    } catch (error) {
+        console.error('❌ ตรวจสอบสิทธิ์สร้างบริษัทล้มเหลว:', error);
+        throw new Error('ไม่สามารถตรวจสอบสิทธิ์สร้างบริษัทได้');
+    }
+};
+
+/**
+ * เพิ่มจำนวนบริษัทปัจจุบันใน quota
+ * @param companyId - ID ของบริษัท
+ */
+export const incrementCompanyCount = async (companyId: string): Promise<void> => {
+    try {
+        const quotaRef = doc(db, QUOTAS_COLLECTION, companyId);
+        const quotaSnap = await getDoc(quotaRef);
+
+        if (!quotaSnap.exists()) {
+            console.warn('⚠️ ไม่พบ quota สำหรับบริษัท:', companyId);
+            return;
+        }
+
+        const currentCount = quotaSnap.data().currentCompanies ?? 0;
+        await updateDoc(quotaRef, {
+            currentCompanies: currentCount + 1,
+            updatedAt: Timestamp.now(),
+        });
+
+        console.log(`✅ เพิ่มจำนวนบริษัทสำเร็จ: ${currentCount} -> ${currentCount + 1}`);
+    } catch (error) {
+        console.error('❌ เพิ่มจำนวนบริษัทล้มเหลว:', error);
+        throw new Error('ไม่สามารถเพิ่มจำนวนบริษัทได้');
+    }
+};
+
+/**
+ * ลดจำนวนบริษัทปัจจุบันใน quota
+ * @param companyId - ID ของบริษัท
+ */
+export const decrementCompanyCount = async (companyId: string): Promise<void> => {
+    try {
+        const quotaRef = doc(db, QUOTAS_COLLECTION, companyId);
+        const quotaSnap = await getDoc(quotaRef);
+
+        if (!quotaSnap.exists()) {
+            console.warn('⚠️ ไม่พบ quota สำหรับบริษัท:', companyId);
+            return;
+        }
+
+        const currentCount = quotaSnap.data().currentCompanies ?? 0;
+        const newCount = Math.max(0, currentCount - 1); // ป้องกันติดลบ
+
+        await updateDoc(quotaRef, {
+            currentCompanies: newCount,
+            updatedAt: Timestamp.now(),
+        });
+
+        console.log(`✅ ลดจำนวนบริษัทสำเร็จ: ${currentCount} -> ${newCount}`);
+    } catch (error) {
+        console.error('❌ ลดจำนวนบริษัทล้มเหลว:', error);
+        throw new Error('ไม่สามารถลดจำนวนบริษัทได้');
     }
 };
 

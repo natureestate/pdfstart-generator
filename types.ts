@@ -29,6 +29,10 @@ export interface CompanyQuota {
     plan: SubscriptionPlan;                  // แผนที่ใช้งานอยู่
     status: SubscriptionStatus;              // สถานะแผน
     
+    // โควตาองค์กร
+    maxCompanies: number;                    // จำนวนองค์กรสูงสุดที่สร้างได้ (-1 = ไม่จำกัด)
+    currentCompanies: number;                // จำนวนองค์กรปัจจุบัน
+    
     // โควตาผู้ใช้งาน
     maxUsers: number;                        // จำนวนผู้ใช้งานสูงสุด (-1 = ไม่จำกัด)
     currentUsers: number;                    // จำนวนผู้ใช้งานปัจจุบัน
@@ -123,6 +127,8 @@ export interface Company {
     id?: string;
     name: string;              // ชื่อบริษัท
     address?: string;          // ที่อยู่บริษัท (optional)
+    phone?: string;            // เบอร์โทรศัพท์บริษัท (optional)
+    email?: string;            // อีเมล/เว็บไซต์บริษัท (optional)
     userId: string;            // Admin คนแรก (คนที่สร้างบริษัท)
     logoUrl?: string | null;   // โลโก้บริษัทปัจจุบัน (URL จาก Storage)
     logoType?: LogoType;       // ประเภทโลโก้
