@@ -378,6 +378,7 @@ const LogoManager: React.FC<LogoManagerProps> = ({
                                 src={displayLogo} 
                                 alt="Company Logo" 
                                 className="max-h-24 max-w-full object-contain"
+                                crossOrigin="anonymous"
                             />
                         </div>
                         

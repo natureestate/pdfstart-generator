@@ -411,6 +411,7 @@ const LogoManagerModal: React.FC<LogoManagerModalProps> = ({
                                             src={displayLogo} 
                                             alt="Company Logo" 
                                             className="max-h-32 max-w-full object-contain"
+                                            crossOrigin="anonymous"
                                         />
                                     </div>
                                     
